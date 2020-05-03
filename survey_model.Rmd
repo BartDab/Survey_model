@@ -1,0 +1,114 @@
+---
+title: "RF"
+author: "Bartosz Dąbrowski"
+date: "3 05 2020"
+output: html_document
+---
+
+```{r }
+require(dplyr)
+require(forcats)
+require(readr)
+require(stringr)
+require(tm)
+require(randomForest)
+require(ranger)
+```
+
+Do zaimportowania użyłem pakietu readr, aby uniknąć problemu z niepoprawnym odczytywaniem polskich znaków przez read.csv().
+
+```{r }
+data <- read_delim("E:/praca/dane.tsv", "\t", 
+    escape_double = FALSE, trim_ws = TRUE)
+head(data,10)
+str(data)
+```
+
+###Oczyszczanie danych###
+###PAMIĘTAJ ŻEBY ŚCIĄGNĄĆ NOWE DANE BO MASZ NOWE ODPOWIEDZI###
+
+```{r }
+data<-as.data.frame(data)
+
+data[,2]<-parse_factor(data[,2],levels=unique(sort(data[,2])))
+data[,4]<-parse_factor(data[,4],levels=unique(sort(data[,4])))
+data[,5]<-parse_factor(data[,5],levels=c("poniżej 5 tysięcy","5 - 20 tysięcy","20 - 100 tysięcy", "100 - 200 tysięcy","200 - 500 tysięcy","powyżej 500 tysięcy"))
+#data[,7]<-parse_factor(data[,7],levels=c("Tak","Nie"))
+data[,8]<-parse_factor(data[,8],levels=c("I","II","III","IV","V","Ukończyłem/ukończyłam studia"))
+data[,9]<-parse_factor(data[,9],levels=c("Publiczna","Prywatna"))
+data[,10]<-parse_factor(data[,10],levels=unique(sort(data[,10])))
+data[,11]<-parse_factor(data[,11],levels=c("Artystyczna","Ekonomiczna","Pedagogiczna","Techniczna","Uniwersytet","Inna"))
+data[,12]<-parse_factor(data[,12],levels=c("Architektura","Automatyka/elektrotechnika","Biologia","Chemia","Dziennikarstwo/komunikacja społeczna","Ekonometria","Ekonomia/finanse","Farmacja","Filologia","Fizyka/astronomia","Geografia","Historia","Informatyka/telekomunikacja","Inżynieria biomedyczna","Inżynieria chemiczna","Inżynieria lądowa/budownictwo/transport","Inżynieria materiałowa","Inżynieria mechaniczna","Inżynieria środowiska/energetyka/górnictwo","Kulturoznawstwo/religioznawstwo","Matematyka","Medycyna","Nauki o bezpieczeństwie","Pedagogika","Prawo/administracja","Psychologia","Socjologia","Sztuki piękne","Technologia żywności","Weterynaria/zootechnika","Zarządzanie","Inne"))
+#data[,13]<-parse_factor(data[,13],levels=c("Tak","Nie"))
+#data[,14]<-parse_factor(data[,14],levels=c("Tak","Nie"))
+#data[,15]<-parse_factor(data[,15],levels=c("Tak","Nie"))
+data[,16]<-parse_factor(data[,16],levels=unique(sort(data[,16])))
+#data[,17]<-parse_factor(data[,17],levels=c("Tak","Nie"))
+#data[,18]<-parse_factor(data[,18],levels=c("Akademik","Dom/mieszkanie rodzinne","Wynajęte mieszkanie","Wynajęty pokój","Inne"))
+data[,28]<-parse_factor(data[,28],levels=c("Jeszcze nie pracuję","Przed początkiem studiów","I rok","II rok", "III rok","IV rok","V rok", "Później"))
+
+str(data)
+```
+
+```{r}
+unique(data[,3])
+data[,3] <- replace(data[,3],data[,3]=="19, rocznikowo 20", "19")#sub("Not Available",NA,x)})
+unique(data[,6])
+Krk<-c('Kraków','Krakow','krk','Krakó','Kraków xD')
+data[,6]<-gsub(paste(Krk, collapse = '|'), 'Kraków', data[,6])
+Wwa<-c('Warszawa','Wawa','Warszasa')
+data[,6]<-gsub(paste(Wwa, collapse = '|'), 'Warszawa', data[,6])
+Poznan<-c("Poznań","poznań","Poznan")
+data[,6]<-gsub(paste(Poznan, collapse = '|'), 'Poznań', data[,6])
+data[,6] <- replace(data[,6],data[,6]=="BIAŁYSTOK", "Białystok")
+data[,6] <- replace(data[,6],data[,6]=="Gdansk", "Gdańsk")
+data[,6] <- replace(data[,6],data[,6]=="Uniwersytet Śląski", "Katowice")
+data[,6] <- replace(data[,6],data[,6]=="słupsk", "Słupsk")
+data[,6] <- replace(data[,6],data[,6]=="Deblin", "Dęblin")
+data[,6] <- replace(data[,6],data[,6]=="Toruń, Poznań", "Toruń")
+table(data[,6])
+```
+
+```{r}
+data[,7]<-replace(data[,7],data[,7]=="Tak",1)
+data[,7]<-replace(data[,7],data[,7]=="Nie",0)
+data[,13:17]<-replace(data[,13:17],data[,13:17]=="Tak",1)
+data[,13:17]<-replace(data[,13:17],data[,13:17]=="Nie",0)
+```
+
+```{r}
+#help(str_detect)
+#str_detect(data[,18],coll("Akademik"))
+data<-data%>%
+  mutate(Akademik=if_else(str_detect(data[,18],coll("Akademik")),1,0),
+         Dom_mieszkanie_rodzinne=if_else(str_detect(data[,18],coll("Dom/mieszkanie rodzinne")),1,0),
+         Wynajete_mieszkanie=if_else(str_detect(data[,18],coll("Wynajęte mieszkanie")),1,0),
+         Wynajety_pokoj=if_else(str_detect(data[,18],coll("Wynajęty pokój")),1,0),
+         Inne=if_else(str_detect(data[,18],coll("Inne")),1,0))
+```
+df - oczyszczona wersja danych
+```{r}
+df<-data[,-29]
+df<-df[,-18]
+df<-df[,-1]
+```
+
+
+próba random forest
+
+
+```{r}
+#set.seed(42)
+#help(ranger)
+#outcome<-df[,26]
+#colnames(df)[1]<-'Plec'
+#colnames(df)[2]-'Wiek'#,'Wiek','Wojewodztwo_pochodzenia', 'Wielkosc_miasta', 'Miasto', 'Wiecej_kierunkow', 'Rok','Rodzaj','Tryb', 'Typ','Dziedzina','Kola','Organizacje','Samorzad','Srednia','Stypendium','Wiodace','Zapychacze','Zapychacze_dobor','Jezyk','Organizacja_uczelni','Plany','Trudnosc','Przydatnosc','Ogolna_ocena','Praca','Akademik','Dom_mieszkanie_rodzinne','Wynajete_mieszkanie','Wynajety_pokoj','Inne')
+#model<-ranger(formula=outcome~.,data=df,num.trees = 300,respect.unordered.factors = 'order',seed=42)
+#model<-ranger(formula=outcome~.,data=df,num.trees = 300,respect.unordered.factors = 'order',seed=42)
+#model<-randomForest(outcome~.,data=df)
+
+
+```
+
+
+
