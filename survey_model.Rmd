@@ -29,6 +29,8 @@ str(data)
 ###Oczyszczanie danych###
 ###PAMIĘTAJ ŻEBY ŚCIĄGNĄĆ NOWE DANE BO MASZ NOWE ODPOWIEDZI###
 
+Dane w formie tekstu zmieniam na factory.
+
 ```{r }
 data<-as.data.frame(data)
 
@@ -51,6 +53,8 @@ data[,28]<-parse_factor(data[,28],levels=c("Jeszcze nie pracuję","Przed począt
 
 str(data)
 ```
+
+W 2 pytaniach otwartych należy oczyścić odpowiedzi.
 
 ```{r}
 unique(data[,3])
@@ -86,6 +90,8 @@ table(data[,6])
 str(data)
 ```
 
+Zmieniam factory z 2 odpowiedziami na zmienne zero-jedynkowe.
+
 ```{r}
 data[,2]<-if_else(data[,2]=="Kobieta",1,0)
 data[,6]<-parse_factor(data[,6],levels=unique(sort(data[,6])))
@@ -94,7 +100,10 @@ data[,10]<-if_else(data[,10]=="Zaocznie",1,0)
 data[,7]<-if_else(data[,7]=="Tak",1,0)
 data[,13:15]<-if_else(data[,13:15]=="Tak",1,0)
 data[,17]<-if_else(data[,17]=="Tak",1,0)
+str(data)
 ```
+
+Odpowiedzi do pytania o lokum wyeksportowane zostały w formie tekstowej, z zaznaczonymi opcjami wymienionymi po przecinku. Aby to wyodrębnić, używam kombinacji if_else i str_detect.
 
 ```{r}
 data<-data%>%
@@ -105,11 +114,15 @@ data<-data%>%
          Inne=if_else(str_detect(data[,18],coll("Inne")),1,0))
 ```
 df - oczyszczona wersja danych
+Wyrzucam kolumnę z feedbackiem, sygnaturę czasową oraz pytanie o lokum, które zostało już rozbite.
+
 ```{r}
 df<-data[,-29]
 df<-df[,-18]
 df<-df[,-1]
 ```
+
+Dla większej czytelności zmieniam nazwy zmiennych.
 
 ```{r}
 colnames(df)[1:31]<-c('Kobieta','Wiek','Wojewodztwo_pochodzenia', 'Wielkosc_miasta', 'Miasto', 'Wiecej_kierunkow', 'Rok','Prywatna','Zaocznie', 'Typ','Dziedzina','Kola','Organizacje','Samorzad','Srednia','Stypendium','Wiodace','Zapychacze','Zapychacze_dobor','Jezyk','Organizacja_uczelni','Plany','Trudnosc','Przydatnosc','Ogolna_ocena','Praca','Akademik','Dom_mieszkanie_rodzinne','Wynajete_mieszkanie','Wynajety_pokoj','Inne')
@@ -117,6 +130,7 @@ str(df)
 colnames(df)
 ```
 
+Mniej więcej w tym miejscu zaczyna się ściernisko, ale będzie San Francisco.
 
 ```{r}
 # Calculate a pairwise association between all variables in a data-frame. In particular nominal vs nominal with Chi-square, numeric vs numeric with Pearson correlation, and nominal vs numeric with ANOVA.
@@ -170,6 +184,11 @@ mixed_assoc(df)#->correlations
 ```
 
 próba random forest
+
+```{r}
+model_rf<-randomForest::randomForest(Praca~.,data=df)
+print(model_rf)
+```
 
 ```{r}
 model<-ranger(formula=Praca~.,data=df,num.trees = 300,respect.unordered.factors = 'order',seed=42)
@@ -295,3 +314,11 @@ plot(model5)
 ```
 
 Well, for now - less output options results in few more percent points in accuracy and better kappa. Next step is to try to prepare better Dyscplina levels and throw out answers, where in feedback question responders claimed they were confused.
+
+Również ważne - należy pobawić się więcej z parametrami oraz miarami, problemem jest bardzo niski odsetek dla II stopnia, później i przed początkiem.
+
+```{r}
+model_rf<-randomForest::randomForest(Praca~.,data=df_4)
+print(model_rf)
+table(df_4$Praca)
+```
