@@ -10,17 +10,16 @@ require(tidyverse)
 require(stringr)
 require(tm)
 require(randomForest)
-require(ranger)
-require(corrplot)
+#require(ranger)
+#require(corrplot)
 require(rcompanion)
-require(caret)
-#require(mlbench)
+#require(caret)
 ```
 
 Do zaimportowania użyłem pakietu readr, aby uniknąć problemu z niepoprawnym odczytywaniem polskich znaków przez read.csv().
 
 ```{r }
-data <- read_delim("E:/survey_model/dane.tsv", "\t", 
+data <- read_delim("E:/survey_model/dane_2.tsv", "\t", 
     escape_double = FALSE, trim_ws = TRUE)
 head(data,10)
 str(data)
@@ -57,32 +56,29 @@ str(data)
 W 2 pytaniach otwartych należy oczyścić odpowiedzi.
 
 ```{r}
-unique(data[,3])
 table(data[,6])
 data[,3] <- replace(data[,3],data[,3]=="19, rocznikowo 20", "19")
-unique(data[,6])
-unique(data[,3])
 data[,3]<-as.numeric(data[,3])
 Krk<-c('Kraków','Krakow','krk','Krakó','Kraków xD')
 data[,6]<-gsub(paste(Krk, collapse = '|'), 'Kraków', data[,6])
-Wwa<-c('Warszawa','Wawa','Warszasa')
-data[,6]<-gsub(paste(Wwa, collapse = '|'), 'Warszawa', data[,6])
-Poznan<-c("Poznań","poznań","Poznan")
-data[,6]<-gsub(paste(Poznan, collapse = '|'), 'Poznań', data[,6])
-Gd<-c('Gdańsk','Gdansk')
-data[,6]<-gsub(paste(Gd, collapse = '|'), 'Gdańsk', data[,6])
+Krk<-c('Warszawa','Wawa','Warszasa')
+data[,6]<-gsub(paste(Krk, collapse = '|'), 'Warszawa', data[,6])
+Krk<-c("Poznań","poznań","Poznan")
+data[,6]<-gsub(paste(Krk, collapse = '|'), 'Poznań', data[,6])
+Krk<-c('Gdańsk','Gdansk')
+data[,6]<-gsub(paste(Krk, collapse = '|'), 'Gdańsk', data[,6])
 
-Gd<-c("BIAŁYSTOK", "Białystok")
-data[,6]<-gsub(paste(Gd, collapse = '|'), 'Białystok', data[,6])
+Krk<-c("BIAŁYSTOK", "Białystok")
+data[,6]<-gsub(paste(Krk, collapse = '|'), 'Białystok', data[,6])
 
-Gd<-c("słupsk", "Słupsk")
-data[,6]<-gsub(paste(Gd, collapse = '|'), 'Słupsk', data[,6])
+Krk<-c("słupsk", "Słupsk")
+data[,6]<-gsub(paste(Krk, collapse = '|'), 'Słupsk', data[,6])
 
-Gd<-c("Deblin", "Dęblin")
-data[,6]<-gsub(paste(Gd, collapse = '|'), 'Dęblin', data[,6])
+Krk<-c("Deblin", "Dęblin")
+data[,6]<-gsub(paste(Krk, collapse = '|'), 'Dęblin', data[,6])
 
-Gd<-c("Toruń, Poznań", "Toruń")
-data[,6]<-gsub(paste(Gd, collapse = '|'), 'Toruń', data[,6])
+Krk<-c("Toruń, Poznań", "Toruń")
+data[,6]<-gsub(paste(Krk, collapse = '|'), 'Toruń', data[,6])
 
 data[,6] <- replace(data[,6],data[,6]=="Uniwersytet Śląski", "Katowice")
 
@@ -126,62 +122,10 @@ Dla większej czytelności zmieniam nazwy zmiennych.
 
 ```{r}
 colnames(df)[1:31]<-c('Kobieta','Wiek','Wojewodztwo_pochodzenia', 'Wielkosc_miasta', 'Miasto', 'Wiecej_kierunkow', 'Rok','Prywatna','Zaocznie', 'Typ','Dziedzina','Kola','Organizacje','Samorzad','Srednia','Stypendium','Wiodace','Zapychacze','Zapychacze_dobor','Jezyk','Organizacja_uczelni','Plany','Trudnosc','Przydatnosc','Ogolna_ocena','Praca','Akademik','Dom_mieszkanie_rodzinne','Wynajete_mieszkanie','Wynajety_pokoj','Inne')
-str(df)
 colnames(df)
 ```
 
 Mniej więcej w tym miejscu zaczyna się ściernisko, ale będzie San Francisco.
-
-```{r}
-# Calculate a pairwise association between all variables in a data-frame. In particular nominal vs nominal with Chi-square, numeric vs numeric with Pearson correlation, and nominal vs numeric with ANOVA.
-# Adopted from https://stackoverflow.com/a/52557631/590437
-mixed_assoc = function(df, cor_method="spearman", adjust_cramersv_bias=TRUE){
-    df_comb = expand.grid(names(df), names(df),  stringsAsFactors = F) %>% set_names("X1", "X2")
-
-    is_nominal = function(x) class(x) %in% c("factor", "character")
-    # https://community.rstudio.com/t/why-is-purr-is-numeric-deprecated/3559
-    # https://github.com/r-lib/rlang/issues/781
-    is_numeric <- function(x) { is.integer(x) || is_double(x)}
-
-    f = function(xName,yName) {
-        x =  pull(df, xName)
-        y =  pull(df, yName)
-
-        result = if(is_nominal(x) && is_nominal(y)){
-            # use bias corrected cramersV as described in https://rdrr.io/cran/rcompanion/man/cramerV.html
-            cv = cramerV(as.character(x), as.character(y), bias.correct = adjust_cramersv_bias)
-            data.frame(xName, yName, assoc=cv, type="cramersV")
-
-        }else if(is_numeric(x) && is_numeric(y)){
-            correlation = cor(x, y, method=cor_method, use="complete.obs")
-            data.frame(xName, yName, assoc=correlation, type="correlation")
-
-        }else if(is_numeric(x) && is_nominal(y)){
-            # from https://stats.stackexchange.com/questions/119835/correlation-between-a-nominal-iv-and-a-continuous-dv-variable/124618#124618
-            r_squared = summary(lm(x ~ y))$r.squared
-            data.frame(xName, yName, assoc=sqrt(r_squared), type="anova")
-
-        }else if(is_nominal(x) && is_numeric(y)){
-            r_squared = summary(lm(y ~x))$r.squared
-            data.frame(xName, yName, assoc=sqrt(r_squared), type="anova")
-
-        }else {
-            warning(paste("unmatched column type combination: ", class(x), class(y)))
-        }
-
-        # finally add complete obs number and ratio to table
-        result %>% mutate(complete_obs_pairs=sum(!is.na(x) & !is.na(y)), complete_obs_ratio=complete_obs_pairs/length(x)) %>% rename(x=xName, y=yName)
-    }
-
-    # apply function to each variable combination
-    map2_df(df_comb$X1, df_comb$X2, f)
-}
-```
-
-```{r}
-mixed_assoc(df)#->correlations
-#this is definitely not perfect way to check associations, I can understand that field of study is not strong correlated with job, but some correlation has to be
-```
 
 próba random forest
 
@@ -190,135 +134,114 @@ model_rf<-randomForest::randomForest(Praca~.,data=df)
 print(model_rf)
 ```
 
-```{r}
-model<-ranger(formula=Praca~.,data=df,num.trees = 300,respect.unordered.factors = 'order',seed=42)
-model
+Od razu widoczne są problemy - ledwie pojedyncze przeypadki są klasyfikowane inaczej, niż jako "jeszcze nie pracuję". Output jest niezbalansowany, ponad połowa osób wpada do jednej opcji, więc model wyciąga błędne wnioski.
 
-model2 <- train(
-  Praca~.,
-  tuneLength = 10,
-  data = df, 
-  method = 'ranger',
-  trControl = trainControl(
-    method = "cv", 
-    number = 5, 
-    verboseIter = TRUE
-  )
-)
-model2
-plot(model2)
-#model<-ranger(formula=outcome~.,data=df,num.trees = 300,respect.unordered.factors = 'order',seed=42)
-#model<-randomForest(outcome~.,data=df)
-
-
-```
-
-```{r}
-model2 <- train(
-  Praca~.,
-  tuneLength = 10,
-  data = df, 
-  method = 'ranger',
-  trControl = trainControl(
-    method = "cv", 
-    number = 10, 
-    verboseIter = TRUE
-  )
-)
-model2
-plot(model2)
-```
-
-As I can see, combanation mtry=27 and extratrees splitrule gives so far the best accuracy, but with no doubts it's not what I expecting. So I try to create a new column, "Dyscyplina", which assigns more common fields of study - now there's a factor with 32 levels, even more than in "Miasto".
+Zacznę od uogólnienia kolumny dziedzina studiów, posługując się aktualnymi dyscyplinami, do których przypisane są kierunki - są one bardzo niedokładne, ale stanowią chociaż jakąś podstawę do klasyfikacji.
 
 ```{r}
 levels(df$Dziedzina)
-
-df_2<-df%>%
-  mutate(Dyscyplina = ifelse(Dziedzina %in% c('Biologia','Chemia','Farmacja'),'Nauki biologiczne',ifelse(Dziedzina %in% c('Psychologia','Socjologia','Zarządzanie','Nauki o bezpieczeństwie'),'Nauki spoleczne',ifelse(Dziedzina %in% c('Ekonomia/finanse','Ekonometria','Matematyka'),'Nauki ekonomiczne',ifelse(Dziedzina %in% c('Inżynieria biomedyczna','Inżynieria chemiczna','Inżynieria materiałowa'),'Inzynieria materialowa',ifelse(Dziedzina %in% c('Historia','Kulturoznawstwo/religioznawstwo','Geografia'),'Nauki humanistyczne',ifelse(Dziedzina %in% c('Fizyka/astronomia','Informatyka/telekomunikacja'),'Informatyka/fizyka',ifelse(Dziedzina %in% c('Architektura','Inżynieria lądowa/budownictwo/transport'),'Architektura/budownictwo',ifelse(Dziedzina %in% c('Automatyka/elektrotechnika','Inżynieria mechaniczna'),'Elektrotechnika',levels(df$Dziedzina)[Dziedzina])))))))))
+df2<-df%>%
+  mutate(Dyscyplina = ifelse(Dziedzina %in% c('Biologia','Chemia', 'Geografia'),'Nauki przyrodnicze',ifelse(Dziedzina %in% c('Psychologia','Socjologia','Zarządzanie','Nauki o bezpieczeństwie','Pedagogika','Ekonomia/finanse','Ekonometria','Prawo/administracja','Dziennikarstwo/komunikacja społeczna'),'Nauki spoleczne',ifelse(Dziedzina %in% c('Inżynieria biomedyczna','Inżynieria chemiczna','Inżynieria materiałowa','Inżynieria mechaniczna','Inżynieria środowiska/energetyka/górnictwo','Inżynieria lądowa/budownictwo/transport',"Architektura","Automatyka/elektrotechnika"),'Nauki inzynieryjno-techniczne',ifelse(Dziedzina %in% c('Historia','Kulturoznawstwo/religioznawstwo',"Filologia"),'Nauki humanistyczne',ifelse(Dziedzina %in% c('Medycyna','Farmacja'),'Nauki o zdrowiu',ifelse(Dziedzina %in% c('Fizyka/astronomia','Informatyka/telekomunikacja',"Matematyka"),'Nauki scisle',ifelse(Dziedzina %in% c("Technologia żywności","Weterynaria/zootechnika" ),'Nauki rolnicze',levels(df$Dziedzina)[Dziedzina]))))))))
 #this code is ugly as fuck, but well, at least it's work
-df_2[,32]<-parse_factor(df_2[,32],levels=unique(sort(df_2[,32])))
-df_2<-df_2[,-11]
-str(df_2)
+df2[,32]<-parse_factor(df2[,32],levels=unique(sort(df2[,32])))
+levels(df2[,31])
+df2<-df2[,-11]
+str(df2)
 ```
 
-```{r}
-model3 <- train(
-  Praca~.,
-  tuneLength = 10,
-  data = df_2, 
-  method = 'ranger',
-  trControl = trainControl(
-    method = "cv", 
-    number = 10, 
-    verboseIter = TRUE
-  )
-)
-model3
-plot(model3)
-```
+Kolejnym etapem jest powiązanie miast, które w praktyce mogą być traktowane jako jedno - Trójmiasta oraz konurbacji śląskiej.
 
 ```{r}
-df_3<-df_2
-unique(df_3[,5])
+df3<-df2
+unique(df3[,5])
 Wekt<-c('Gdańsk','Gdynia','Sopot')
-df_3[,5]<-gsub(paste(Wekt, collapse = '|'), 'Trójmiasto', df_3[,5])
+df3[,5]<-gsub(paste(Wekt, collapse = '|'), 'Trójmiasto', df3[,5])
 Wekt<-c('Katowice','Bytom','Gliwice','Sosnowiec','Zabrze')
-df_3[,5]<-gsub(paste(Wekt, collapse = '|'), 'Śląsk', df_3[,5])
-df_3[,5]<-parse_factor(df_3[,5],levels=unique(sort(df_3[,5])))
-str(df_3)
+df3[,5]<-gsub(paste(Wekt, collapse = '|'), 'Śląsk', df3[,5])
+df3[,5]<-parse_factor(df3[,5],levels=unique(sort(df3[,5])))
+str(df3)
 ```
 
-```{r}
-model4 <- train(
-  Praca~.,
-  tuneLength = 10,
-  data = df_3, 
-  method = 'ranger',
-  trControl = trainControl(
-    method = "cv", 
-    number = 10, 
-    verboseIter = TRUE
-  )
-)
-model4
-plot(model4)
-```
-
+Ostatnim elementem jest uproszczenie outputu - opcja niepracująca to ponad 60% odpowiedzi, podczas gdy II stopień i "później" to niespełna 5%. W tej chwili rozważam usunięcie odpowiedzi bądź połączenie ich z III rokiem, ale na razie się wstrzymam. Rozwiązaniem być może byłoby też odpowiednie próbkowanie.
 
 ```{r}
-levels(df_3$Praca)
-df_4<-df_3
+table(df3$Praca)
+levels(df3$Praca)
+df4<-df3
 Wekt<-c('I rok','II rok','III rok')
-df_4[,25]<-gsub(paste(Wekt, collapse = '|'), 'I stopień', df_4[,25])
-Wekt<-c('IV rok','V rok')
-df_4[,25]<-gsub(paste(Wekt, collapse = '|'), 'II stopień', df_4[,25])
-df_4[,25]<-parse_factor(df_4[,25],levels=unique(sort(df_4[,25])))
-str(df_4)
+df4[,25]<-gsub(paste(Wekt, collapse = '|'), 'I stopień', df4[,25])
+Wekt<-c('IV rok', 'V rok', 'Później')
+df4[,25]<-gsub(paste(Wekt, collapse = '|'), 'II stopień i później', df4[,25])
+df4[,25]<-parse_factor(df4[,25],levels=unique(sort(df4[,25])))
+str(df4)
 ```
-
-```{r}
-model5 <- train(
-  Praca~.,
-  tuneLength = 10,
-  data = df_4, 
-  method = 'ranger',
-  trControl = trainControl(
-    method = "cv", 
-    number = 10, 
-    verboseIter = TRUE
-  )
-)
-model5
-plot(model5)
-```
-
-Well, for now - less output options results in few more percent points in accuracy and better kappa. Next step is to try to prepare better Dyscplina levels and throw out answers, where in feedback question responders claimed they were confused.
 
 Również ważne - należy pobawić się więcej z parametrami oraz miarami, problemem jest bardzo niski odsetek dla II stopnia, później i przed początkiem.
 
+Opcje do spróbowania:
+algorytm SMOTE
+"przed", "I rok", "II rok", "III i później"
+Wyrzucenie opcji powyżej III roku
+"Pracuje", "Nie pracuje" (najlepsze?)
+Sampling opcji niepracującej
+
 ```{r}
-model_rf<-randomForest::randomForest(Praca~.,data=df_4)
-print(model_rf)
-table(df_4$Praca)
+model2<-randomForest::randomForest(Praca~.,data=df4)
+print(model2)
+table(df4$Praca)
 ```
+
+
+###3 ROK RAZEM Z OPCJAMI WYZSZYMI###
+
+```{r}
+df5<-df3
+Wekt<-c('III rok','IV rok', 'V rok', 'Później')
+df5[,25]<-gsub(paste(Wekt, collapse = '|'), 'III rok i później', df5[,25])
+df5[,25]<-parse_factor(df5[,25],levels=unique(sort(df5[,25])))
+table(df5$Praca)
+```
+
+```{r}
+model3<-randomForest::randomForest(Praca~.,data=df5)
+print(model3)
+```
+
+Cóż, wyszło jeszcze gorzej.
+
+###OPCJA ZEROJEDYNKOWA###
+
+```{r}
+#można to zrobić zgrabniej, ale na tym etapie chcę przede wszystkim sprawdzić, czy przyniesie to znaczącą poprawę
+df6<-df3
+Wekt<-c('Przed początkiem studiów','I rok','II rok','III rok','IV rok', 'V rok', 'Później')
+df6[,25]<-gsub(paste(Wekt, collapse = '|'), 'Pracuję', df6[,25])
+df6[,25]<-parse_factor(df6[,25],levels=unique(sort(df6[,25])))
+levels(df6$Praca)
+table(df6$Praca)
+```
+
+```{r}
+set.seed(42)
+model4<-randomForest(Praca~.,data=df6,ntrees=500,mtry=5,importance=TRUE)
+print(model4)
+randomForest::importance(model4,class=TRUE)
+varImpPlot(model4)
+```
+
+W końcu wygląda to... no, może nie lepiej, ale ludzko. Wciąż jest bardzo duży błąd w opcji pracującej, ale klasyfikator zaczął chociaż myśleć, a nie automatycznie wybierać bezrobotnych.
+
+```{r}
+help(randomForest)
+help(importance)
+```
+
+```{r}
+set.seed(42)
+model5<-randomForest(Praca~.,data=df6,ntrees=500,mtry=5,importance=TRUE,sampsize=c(120,120))
+print(model5)
+randomForest::importance(model5,class=TRUE)
+varImpPlot(model5)
+```
+
+Atm to najlepsze, choć wciąż nie dobre. Gorzej radzi sobie z niepracującymi, za to nieco lepiej z pracującymi.
