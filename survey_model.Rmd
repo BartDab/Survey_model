@@ -10,10 +10,7 @@ require(tidyverse)
 require(stringr)
 require(tm)
 require(randomForest)
-#require(ranger)
-#require(corrplot)
-require(rcompanion)
-#require(caret)
+#require(rcompanion)
 ```
 
 Do zaimportowania użyłem pakietu readr, aby uniknąć problemu z niepoprawnym odczytywaniem polskich znaków przez read.csv().
@@ -159,7 +156,6 @@ df3[,5]<-gsub(paste(Wekt, collapse = '|'), 'Trójmiasto', df3[,5])
 Wekt<-c('Katowice','Bytom','Gliwice','Sosnowiec','Zabrze')
 df3[,5]<-gsub(paste(Wekt, collapse = '|'), 'Śląsk', df3[,5])
 df3[,5]<-parse_factor(df3[,5],levels=unique(sort(df3[,5])))
-str(df3)
 ```
 
 Ostatnim elementem jest uproszczenie outputu - opcja niepracująca to ponad 60% odpowiedzi, podczas gdy II stopień i "później" to niespełna 5%. W tej chwili rozważam usunięcie odpowiedzi bądź połączenie ich z III rokiem, ale na razie się wstrzymam. Rozwiązaniem być może byłoby też odpowiednie próbkowanie.
@@ -173,7 +169,6 @@ df4[,25]<-gsub(paste(Wekt, collapse = '|'), 'I stopień', df4[,25])
 Wekt<-c('IV rok', 'V rok', 'Później')
 df4[,25]<-gsub(paste(Wekt, collapse = '|'), 'II stopień i później', df4[,25])
 df4[,25]<-parse_factor(df4[,25],levels=unique(sort(df4[,25])))
-str(df4)
 ```
 
 Również ważne - należy pobawić się więcej z parametrami oraz miarami, problemem jest bardzo niski odsetek dla II stopnia, później i przed początkiem.
@@ -223,9 +218,9 @@ table(df6$Praca)
 
 ```{r}
 set.seed(42)
-model4<-randomForest(Praca~.,data=df6,ntrees=500,mtry=5,importance=TRUE)
+model4<-randomForest(Praca~.,data=df6,ntrees=500,mtry=6,importance=TRUE,sampsize=c(155,155))
 print(model4)
-randomForest::importance(model4,class=TRUE)
+importance(model4,class=TRUE)
 varImpPlot(model4)
 ```
 
@@ -236,12 +231,39 @@ help(randomForest)
 help(importance)
 ```
 
+Atm to najlepsze, choć wciąż nie dobre. Gorzej radzi sobie z niepracującymi, za to nieco lepiej z pracującymi.
+
+###WYRZUCENIE NIEZDECYDOWANYCH###
+
 ```{r}
-set.seed(42)
-model5<-randomForest(Praca~.,data=df6,ntrees=500,mtry=5,importance=TRUE,sampsize=c(120,120))
-print(model5)
-randomForest::importance(model5,class=TRUE)
-varImpPlot(model5)
+df0<-data[,-18]
+df0<-df0[,-1]
 ```
 
-Atm to najlepsze, choć wciąż nie dobre. Gorzej radzi sobie z niepracującymi, za to nieco lepiej z pracującymi.
+```{r}
+colnames(df0)[1:32]<-c('Kobieta','Wiek','Wojewodztwo_pochodzenia', 'Wielkosc_miasta', 'Miasto', 'Wiecej_kierunkow', 'Rok','Prywatna','Zaocznie', 'Typ','Dziedzina','Kola','Organizacje','Samorzad','Srednia','Stypendium','Wiodace','Zapychacze','Zapychacze_dobor','Jezyk','Organizacja_uczelni','Plany','Trudnosc','Przydatnosc','Ogolna_ocena','Praca','Feedback','Akademik','Dom_mieszkanie_rodzinne','Wynajete_mieszkanie','Wynajety_pokoj','Inne')
+df0<-df0%>%
+  mutate(Dyscyplina = ifelse(Dziedzina %in% c('Biologia','Chemia', 'Geografia'),'Nauki przyrodnicze',ifelse(Dziedzina %in% c('Psychologia','Socjologia','Zarządzanie','Nauki o bezpieczeństwie','Pedagogika','Ekonomia/finanse','Ekonometria','Prawo/administracja','Dziennikarstwo/komunikacja społeczna'),'Nauki spoleczne',ifelse(Dziedzina %in% c('Inżynieria biomedyczna','Inżynieria chemiczna','Inżynieria materiałowa','Inżynieria mechaniczna','Inżynieria środowiska/energetyka/górnictwo','Inżynieria lądowa/budownictwo/transport',"Architektura","Automatyka/elektrotechnika"),'Nauki inzynieryjno-techniczne',ifelse(Dziedzina %in% c('Historia','Kulturoznawstwo/religioznawstwo',"Filologia"),'Nauki humanistyczne',ifelse(Dziedzina %in% c('Medycyna','Farmacja'),'Nauki o zdrowiu',ifelse(Dziedzina %in% c('Fizyka/astronomia','Informatyka/telekomunikacja',"Matematyka"),'Nauki scisle',ifelse(Dziedzina %in% c("Technologia żywności","Weterynaria/zootechnika" ),'Nauki rolnicze',levels(df$Dziedzina)[Dziedzina]))))))))
+df0[,33]<-parse_factor(df0[,33],levels=unique(sort(df0[,33])))
+df0<-df0[,-11]
+Wekt<-c('Gdańsk','Gdynia','Sopot')
+df0[,5]<-gsub(paste(Wekt, collapse = '|'), 'Trójmiasto', df0[,5])
+Wekt<-c('Katowice','Bytom','Gliwice','Sosnowiec','Zabrze')
+df0[,5]<-gsub(paste(Wekt, collapse = '|'), 'Śląsk', df0[,5])
+df0[,5]<-parse_factor(df0[,5],levels=unique(sort(df0[,5])))
+Wekt<-c('Przed początkiem studiów','I rok','II rok','III rok','IV rok', 'V rok', 'Później')
+df0[,25]<-gsub(paste(Wekt, collapse = '|'), 'Pracuję', df0[,25])
+df0[,25]<-parse_factor(df0[,25],levels=unique(sort(df0[,25])))
+levels(df0$Praca)
+table(df0$Praca)
+```
+
+```{r}
+df0[!(is.na(df0[,26])),25:26]
+
+
+```
+
+
+
+
