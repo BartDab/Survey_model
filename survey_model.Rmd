@@ -10,7 +10,6 @@ require(tidyverse)
 require(stringr)
 require(tm)
 require(randomForest)
-#require(rcompanion)
 ```
 
 Do zaimportowania użyłem pakietu readr, aby uniknąć problemu z niepoprawnym odczytywaniem polskich znaków przez read.csv().
@@ -47,7 +46,7 @@ data[,16]<-parse_factor(data[,16],levels=unique(sort(data[,16])))
 #data[,18]<-parse_factor(data[,18],levels=c("Akademik","Dom/mieszkanie rodzinne","Wynajęte mieszkanie","Wynajęty pokój","Inne"))
 data[,28]<-parse_factor(data[,28],levels=c("Jeszcze nie pracuję","Przed początkiem studiów","I rok","II rok", "III rok","IV rok","V rok", "Później"))
 
-str(data)
+head(data)
 ```
 
 W 2 pytaniach otwartych należy oczyścić odpowiedzi.
@@ -80,7 +79,7 @@ data[,6]<-gsub(paste(Krk, collapse = '|'), 'Toruń', data[,6])
 data[,6] <- replace(data[,6],data[,6]=="Uniwersytet Śląski", "Katowice")
 
 table(data[,6])
-str(data)
+head(data)
 ```
 
 Zmieniam factory z 2 odpowiedziami na zmienne zero-jedynkowe.
@@ -93,7 +92,7 @@ data[,10]<-if_else(data[,10]=="Zaocznie",1,0)
 data[,7]<-if_else(data[,7]=="Tak",1,0)
 data[,13:15]<-if_else(data[,13:15]=="Tak",1,0)
 data[,17]<-if_else(data[,17]=="Tak",1,0)
-str(data)
+head(data)
 ```
 
 Odpowiedzi do pytania o lokum wyeksportowane zostały w formie tekstowej, z zaznaczonymi opcjami wymienionymi po przecinku. Aby to wyodrębnić, używam kombinacji if_else i str_detect.
@@ -143,7 +142,7 @@ df2<-df%>%
 df2[,32]<-parse_factor(df2[,32],levels=unique(sort(df2[,32])))
 levels(df2[,31])
 df2<-df2[,-11]
-str(df2)
+head(df2)
 ```
 
 Kolejnym etapem jest powiązanie miast, które w praktyce mogą być traktowane jako jedno - Trójmiasta oraz konurbacji śląskiej.
@@ -222,6 +221,7 @@ model4<-randomForest(Praca~.,data=df6,ntrees=500,mtry=6,importance=TRUE,sampsize
 print(model4)
 importance(model4,class=TRUE)
 varImpPlot(model4)
+str(model4)
 ```
 
 W końcu wygląda to... no, może nie lepiej, ale ludzko. Wciąż jest bardzo duży błąd w opcji pracującej, ale klasyfikator zaczął chociaż myśleć, a nie automatycznie wybierać bezrobotnych.
@@ -259,11 +259,23 @@ table(df0$Praca)
 ```
 
 ```{r}
-df0[!(is.na(df0[,26])),25:26]
-
+df0[!(is.na(df0[,26])),25:26] #analiza feedbacku - respondenci zgłaszający problemy z zaznaczeniem odpowiadających ich sytuacji opcji zostaną usunięci z danych
+df01<-df0[-c(60, 103, 240, 244, 258,276, 321,345,347,348,366,87, 264),-26]
 
 ```
 
+
+```{r}
+table(df01$Praca)
+model5<-randomForest(Praca~.,data=df01,ntree=1000,mtry=6,importance=TRUE,sampsize=c(150,150))
+print(model5)
+importance(model5,class=TRUE)
+varImpPlot(model5)
+#str(model5)
+
+```
+
+Z 13 usuniętych przypadków, 8 było błędni klasyfikowanych - 5 "pracujących" było uznawanych za bezrobotnych, 3 bezrobotnych - za pracujących. Przyniosło to delikatną poprawę.
 
 
 
