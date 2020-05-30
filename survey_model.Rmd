@@ -23,7 +23,6 @@ data <- read.table("E:/survey_model/dane_ankieta.tsv",sep="\t",header=TRUE,fileE
 
 
 ```{r echo=FALSE}
-head(data,10)
 data[,27]<-as.factor(data[,27])
 ```
 
@@ -103,7 +102,7 @@ df_test <- df[-train_indices, ]
 
 ```{r echo=FALSE}
 table(df_train$Praca)
-model_train<-randomForest(Praca~.,data=df_train,ntree=1000,mtry=5,importance=TRUE,sampsize=c(78,78))
+model_train<-randomForest(Praca~.,data=df_train,ntree=1000,mtry=5,importance=TRUE,sampsize=c(104,104))
 print(model_train)
 importance(model_train,class=TRUE)
 ```
@@ -184,7 +183,7 @@ df_test2 <- df2[-train_indices, ]
 
 ```{r echo=FALSE}
 table(df_train2$Praca)
-model_train2<-randomForest(Praca~.,data=df_train2,ntree=1000,mtry=5,importance=TRUE,sampsize=c(100,100))
+model_train2<-randomForest(Praca~.,data=df_train2,ntree=1000,mtry=5,importance=TRUE,sampsize=c(104,104))
 print(model_train2)
 importance(model_train2,class=TRUE)
 

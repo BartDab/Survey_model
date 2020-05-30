@@ -1,0 +1,149 @@
+---
+title: "Model lasu losowego na danych ankietowych"
+author: "Bartosz Dąbrowski"
+date: "3 05 2020"
+output: html_document
+---
+
+# Wczytanie danych
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+require(tidyverse)
+require(stringr)
+require(tm)
+```
+
+Pierwszym etapem jest import i podgląd danych do analizy.
+
+```{r echo=FALSE, message=FALSE}
+set.seed(42)
+data <- read_delim("E:/survey_model/dane_2.tsv", "\t", 
+    escape_double = FALSE, trim_ws = TRUE)
+```
+
+
+```{r}
+head(data,10)
+```
+
+# Oczyszczanie danych
+
+Zmiana kolumn w formacie __str__ na __factor__.
+
+```{r}
+data<-as.data.frame(data)
+data[,4]<-parse_factor(data[,4],levels=unique(sort(data[,4])))
+data[,5]<-parse_factor(data[,5],levels=c("poniżej 5 tysięcy","5 - 20 tysięcy","20 - 100 tysięcy", "100 - 200 tysięcy","200 - 500 tysięcy","powyżej 500 tysięcy"))
+data[,8]<-parse_factor(data[,8],levels=c('I','II','III','IV','V','Ukończyłem/ukończyłam studia'))
+data[,11]<-parse_factor(data[,11],levels=c("Artystyczna","Ekonomiczna","Pedagogiczna","Techniczna","Uniwersytet","Inna"))
+data[,12]<-parse_factor(data[,12],levels=c("Architektura","Automatyka/elektrotechnika","Biologia","Chemia","Dziennikarstwo/komunikacja społeczna","Ekonometria","Ekonomia/finanse","Farmacja","Filologia","Fizyka/astronomia","Geografia","Historia","Informatyka/telekomunikacja","Inżynieria biomedyczna","Inżynieria chemiczna","Inżynieria lądowa/budownictwo/transport","Inżynieria materiałowa","Inżynieria mechaniczna","Inżynieria środowiska/energetyka/górnictwo","Kulturoznawstwo/religioznawstwo","Matematyka","Medycyna","Nauki o bezpieczeństwie","Pedagogika","Prawo/administracja","Psychologia","Socjologia","Sztuki piękne","Technologia żywności","Weterynaria/zootechnika","Zarządzanie","Inne"))
+data[,16]<-parse_factor(data[,16],levels=unique(sort(data[,16])))
+data[,28]<-parse_factor(data[,28],levels=c("Jeszcze nie pracuję","Przed początkiem studiów","I rok","II rok", "III rok","IV rok","V rok", "Później"))
+```
+
+
+Oczyszczanie odpowiedzi - ujednolicenie odpowiedzi bez polskich znaków, z literówkami, dodatkowymi komentarzamim, a także połączenie tych miast, w przypadku których nie ma różnicy w dostępie do pracy, uczelni czy w średnich cenach, i które w praktyce można niemal traktować jak jedno miasto - Trójmiasto oraz Górnośląski Okręg Przemysłowy.
+
+Przed:
+
+```{r echo=FALSE}
+table(data[,6])
+```
+
+
+```{r echo=FALSE}
+data[,3] <- replace(data[,3],data[,3]=="19, rocznikowo 20", "19")
+data[,3]<-as.numeric(data[,3])
+wektor<-c('Kraków','Krakow','krk','Krakó','Kraków xD')
+data[,6]<-gsub(paste(wektor, collapse = '|'), 'Kraków', data[,6])
+wektor<-c('Warszawa','Wawa','Warszasa')
+data[,6]<-gsub(paste(wektor, collapse = '|'), 'Warszawa', data[,6])
+wektor<-c("Poznań","poznań","Poznan")
+data[,6]<-gsub(paste(wektor, collapse = '|'), 'Poznań', data[,6])
+wektor<-c('Gdańsk','Gdansk')
+data[,6]<-gsub(paste(wektor, collapse = '|'), 'Gdańsk', data[,6])
+wektor<-c("BIAŁYSTOK", "Białystok")
+data[,6]<-gsub(paste(wektor, collapse = '|'), 'Białystok', data[,6])
+wektor<-c("słupsk", "Słupsk")
+data[,6]<-gsub(paste(wektor, collapse = '|'), 'Słupsk', data[,6])
+wektor<-c("Deblin", "Dęblin")
+data[,6]<-gsub(paste(wektor, collapse = '|'), 'Dęblin', data[,6])
+wektor<-c("Toruń, Poznań", "Toruń")
+data[,6]<-gsub(paste(wektor, collapse = '|'), 'Toruń', data[,6])
+data[,6] <- replace(data[,6],data[,6]=="Uniwersytet Śląski", "Katowice")
+wektor<-c('Gdańsk','Gdynia','Sopot')
+data[,6]<-gsub(paste(wektor, collapse = '|'), 'Trójmiasto', data[,6])
+wektor<-c('Katowice','Bytom','Gliwice','Sosnowiec','Zabrze')
+data[,6]<-gsub(paste(wektor, collapse = '|'), 'Katowice', data[,6])
+data[,6]<-parse_factor(data[,6],levels=unique(sort(data[,6])))
+```
+
+Po:
+
+```{r echo=FALSE}
+table(data[,6])
+```
+
+W przypadku kolumn z 2 możliwymi odpowiedziami, można je zamienić na zmienne zero-jedynkowe.
+
+```{r}
+data[,2]<-if_else(data[,2]=="Kobieta",1,0)
+data[,9]<-if_else(data[,9]=="Prywatna",1,0)
+data[,10]<-if_else(data[,10]=="Zaocznie",1,0)
+data[,7]<-if_else(data[,7]=="Tak",1,0)
+data[,13:15]<-if_else(data[,13:15]=="Tak",1,0)
+data[,17]<-if_else(data[,17]=="Tak",1,0)
+```
+
+Odpowiedzi do pytania o lokum wyeksportowane zostały w formie tekstowej, z zaznaczonymi opcjami wymienionymi po przecinku. Aby je wyodrębnić do osobnych kolumn, zastosowano kombinację __if_else__ i __str_detect__ z pakietu *stringr*.
+
+```{r}
+data<-data%>%
+  mutate(Akademik=if_else(str_detect(data[,18],coll("Akademik")),1,0),
+         Dom_mieszkanie_rodzinne=if_else(str_detect(data[,18],coll("Dom/mieszkanie rodzinne")),1,0),
+         Wynajete_mieszkanie=if_else(str_detect(data[,18],coll("Wynajęte mieszkanie")),1,0),
+         Wynajety_pokoj=if_else(str_detect(data[,18],coll("Wynajęty pokój")),1,0),
+         Inne=if_else(str_detect(data[,18],coll("Inne")),1,0))
+```
+
+
+Tworząc ankietę, użyty został aktualny podział na dziedziny ustalonego przez Ministerstwo Szkolnictwa Wyższego. Zmienna o 32 możliwych wartościach ma jednak niską wartość predykcyjną i zwiększa ryzyko wykrycia fałszywych korelacji (zwłaszcza w przypadku kierunków z niską liczbą respondentów). W tym celu zostaną one zastąpione przypisaniem do dyscyplin, które, choć niedokładne, pozwalają na większe uogólnienie i generalizację.
+
+Przed:
+
+```{r echo=FALSE}
+levels(data[,12])
+```
+
+```{r}
+data<-data%>%
+  mutate(Dyscyplina = ifelse(data[,12] %in% c('Biologia','Chemia', 'Geografia'),'Nauki przyrodnicze',ifelse(data[,12]  %in% c('Psychologia','Socjologia','Zarządzanie','Nauki o bezpieczeństwie','Pedagogika','Ekonomia/finanse','Ekonometria','Prawo/administracja','Dziennikarstwo/komunikacja społeczna'),'Nauki spoleczne',ifelse(data[,12]  %in% c('Inżynieria biomedyczna','Inżynieria chemiczna','Inżynieria materiałowa','Inżynieria mechaniczna','Inżynieria środowiska/energetyka/górnictwo','Inżynieria lądowa/budownictwo/transport',"Architektura","Automatyka/elektrotechnika"),'Nauki inzynieryjno-techniczne',ifelse(data[,12]  %in% c('Historia','Kulturoznawstwo/religioznawstwo',"Filologia"),'Nauki humanistyczne',ifelse(data[,12]  %in% c('Medycyna','Farmacja'),'Nauki o zdrowiu',ifelse(data[,12]  %in% c('Fizyka/astronomia','Informatyka/telekomunikacja',"Matematyka"),'Nauki scisle',ifelse(data[,12]  %in% c("Technologia żywności","Weterynaria/zootechnika" ),'Nauki rolnicze',levels(data[,12])[`Jaka dziedzina nauk najlepiej określa Twoje studia?`]))))))))
+data[,35]<-parse_factor(data[,35],levels=unique(sort(data[,35])))
+data<-data[,-12]
+```
+
+Po:
+
+```{r echo=FALSE}
+levels(data[,34])
+```
+
+Ostatnim elementem jest uproszczenie outputu - opcja niepracująca to ponad 60% odpowiedzi, podczas gdy II stopień i "później" łącznie to niespełna 5%. Aby to wyrównać, zastosowano generalizację wszystkich opcji "pracujących" i połączenie w jedną, o reprezentacji w danych wynoszącej blisko 40%. **1** oznacza osoby pracujące, **0** - nie.
+
+Przed:
+
+```{r echo=FALSE}
+table(data[,27])
+```
+
+Po:
+
+```{r echo=FALSE}
+data[,27]<-if_else(data[,27]=="Jeszcze nie pracuję",0,1)
+data[,27]<-as.factor(data[,27])
+table(data[,27])
+```
+
+```{r echo=FALSE}
+write.table(data, 'dane_ankieta.tsv', sep='\t', fileEncoding = "UTF-8")
+```
