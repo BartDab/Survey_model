@@ -22,28 +22,17 @@ str(data)
 ```
 
 ###Oczyszczanie danych###
-###PAMIĘTAJ ŻEBY ŚCIĄGNĄĆ NOWE DANE BO MASZ NOWE ODPOWIEDZI###
 
 Dane w formie tekstu zmieniam na factory.
 
 ```{r }
 data<-as.data.frame(data)
 
-#data[,2]<-parse_factor(data[,2],levels=unique(sort(data[,2])))
 data[,4]<-parse_factor(data[,4],levels=unique(sort(data[,4])))
 data[,5]<-parse_factor(data[,5],levels=c("poniżej 5 tysięcy","5 - 20 tysięcy","20 - 100 tysięcy", "100 - 200 tysięcy","200 - 500 tysięcy","powyżej 500 tysięcy"))
-#data[,7]<-parse_factor(data[,7],levels=c("Tak","Nie"))
-data[,8]<-parse_factor(data[,8],levels=c("I","II","III","IV","V","Ukończyłem/ukończyłam studia"))
-#data[,9]<-parse_factor(data[,9],levels=c("Publiczna","Prywatna"))
-#data[,10]<-parse_factor(data[,10],levels=unique(sort(data[,10])))
 data[,11]<-parse_factor(data[,11],levels=c("Artystyczna","Ekonomiczna","Pedagogiczna","Techniczna","Uniwersytet","Inna"))
 data[,12]<-parse_factor(data[,12],levels=c("Architektura","Automatyka/elektrotechnika","Biologia","Chemia","Dziennikarstwo/komunikacja społeczna","Ekonometria","Ekonomia/finanse","Farmacja","Filologia","Fizyka/astronomia","Geografia","Historia","Informatyka/telekomunikacja","Inżynieria biomedyczna","Inżynieria chemiczna","Inżynieria lądowa/budownictwo/transport","Inżynieria materiałowa","Inżynieria mechaniczna","Inżynieria środowiska/energetyka/górnictwo","Kulturoznawstwo/religioznawstwo","Matematyka","Medycyna","Nauki o bezpieczeństwie","Pedagogika","Prawo/administracja","Psychologia","Socjologia","Sztuki piękne","Technologia żywności","Weterynaria/zootechnika","Zarządzanie","Inne"))
-#data[,13]<-parse_factor(data[,13],levels=c("Tak","Nie"))
-#data[,14]<-parse_factor(data[,14],levels=c("Tak","Nie"))
-#data[,15]<-parse_factor(data[,15],levels=c("Tak","Nie"))
 data[,16]<-parse_factor(data[,16],levels=unique(sort(data[,16])))
-#data[,17]<-parse_factor(data[,17],levels=c("Tak","Nie"))
-#data[,18]<-parse_factor(data[,18],levels=c("Akademik","Dom/mieszkanie rodzinne","Wynajęte mieszkanie","Wynajęty pokój","Inne"))
 data[,28]<-parse_factor(data[,28],levels=c("Jeszcze nie pracuję","Przed początkiem studiów","I rok","II rok", "III rok","IV rok","V rok", "Później"))
 
 head(data)
@@ -126,8 +115,10 @@ Mniej więcej w tym miejscu zaczyna się ściernisko, ale będzie San Francisco.
 próba random forest
 
 ```{r}
-model_rf<-randomForest::randomForest(Praca~.,data=df)
+model_rf<-randomForest::randomForest(Praca~.,data=df, importance=TRUE)
 print(model_rf)
+importance(model_rf)
+varImpPlot(model_rf)
 ```
 
 Od razu widoczne są problemy - ledwie pojedyncze przeypadki są klasyfikowane inaczej, niż jako "jeszcze nie pracuję". Output jest niezbalansowany, ponad połowa osób wpada do jednej opcji, więc model wyciąga błędne wnioski.
@@ -180,8 +171,10 @@ Wyrzucenie opcji powyżej III roku
 Sampling opcji niepracującej
 
 ```{r}
-model2<-randomForest::randomForest(Praca~.,data=df4)
+model2<-randomForest::randomForest(Praca~.,data=df4,importnace=TRUE)
 print(model2)
+importance(model2)
+varImpPlot(model2)
 table(df4$Praca)
 ```
 
@@ -197,8 +190,10 @@ table(df5$Praca)
 ```
 
 ```{r}
-model3<-randomForest::randomForest(Praca~.,data=df5)
+model3<-randomForest::randomForest(Praca~.,data=df5,importance=TRUE)
 print(model3)
+importance(model3)
+varImpPlot(model3)
 ```
 
 Cóż, wyszło jeszcze gorzej.
@@ -217,11 +212,10 @@ table(df6$Praca)
 
 ```{r}
 set.seed(42)
-model4<-randomForest(Praca~.,data=df6,ntrees=500,mtry=6,importance=TRUE,sampsize=c(155,155))
+model4<-randomForest(Praca~.,data=df6,ntree=1000,mtry=5,importance=TRUE,sampsize=c(155,155))
 print(model4)
 importance(model4,class=TRUE)
 varImpPlot(model4)
-str(model4)
 ```
 
 W końcu wygląda to... no, może nie lepiej, ale ludzko. Wciąż jest bardzo duży błąd w opcji pracującej, ale klasyfikator zaczął chociaż myśleć, a nie automatycznie wybierać bezrobotnych.
@@ -267,9 +261,10 @@ df01<-df0[-c(60, 103, 240, 244, 258,276, 321,345,347,348,366,87, 264),-26]
 
 ```{r}
 table(df01$Praca)
-model5<-randomForest(Praca~.,data=df01,ntree=1000,mtry=6,importance=TRUE,sampsize=c(150,150))
+model5<-randomForest(Praca~.,data=df01,ntree=500,mtry=6,importance=TRUE,sampsize=c(150,150))
 print(model5)
 importance(model5,class=TRUE)
+plot(model5) #zielony - pracuję, czarny - średni, czerwony - jeszcze nie
 varImpPlot(model5)
 #str(model5)
 
@@ -277,5 +272,33 @@ varImpPlot(model5)
 
 Z 13 usuniętych przypadków, 8 było błędni klasyfikowanych - 5 "pracujących" było uznawanych za bezrobotnych, 3 bezrobotnych - za pracujących. Przyniosło to delikatną poprawę.
 
+```{r}
+(err<-(model5$confusion[2]+model5$confusion[3])/400)
+(acc<-(model5$confusion[1]+model5$confusion[4])/400)
+(sens<-model5$confusion[1]/(model5$confusion[1]+model5$confusion[3]))
+(spec<-model5$confusion[4]/(model5$confusion[4]+model5$confusion[2]))
+(gmean<-sqrt(sens*spec))
+(recall<-model5$confusion[1]/(model5$confusion[1]+model5$confusion[2]))
+(prec<-model5$confusion[1]/(model5$confusion[1]+model5$confusion[3]))
+```
 
+###PRÓBA ELIMINACJI NIEPOTRZEBNYCH ZMIENNYCH#
+
+```{r}
+df02<-df01[,-13]
+
+```
+
+
+
+```{r}
+table(df02$Praca)
+model6<-randomForest(Praca~.,data=df02,ntree=500,mtry=6,importance=TRUE,sampsize=c(150,150))
+print(model6)
+importance(model6,class=TRUE)
+plot(model6) #zielony - pracuję, czarny - średni, czerwony - jeszcze nie
+varImpPlot(model6)
+#str(model5)
+
+```
 
