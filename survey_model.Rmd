@@ -1,304 +1,208 @@
 ---
-title: "RF"
+title: "Model lasu losowego na danych ankietowych - część 2"
 author: "Bartosz Dąbrowski"
-date: "3 05 2020"
+date: "30 05 2020"
 output: html_document
 ---
+# Wczytanie danych
 
-```{r }
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 require(tidyverse)
 require(stringr)
 require(tm)
 require(randomForest)
+require(Metrics)
 ```
 
-Do zaimportowania użyłem pakietu readr, aby uniknąć problemu z niepoprawnym odczytywaniem polskich znaków przez read.csv().
+Import przygotowanych danych i delikatne zmiany.
 
-```{r }
-data <- read_delim("E:/survey_model/dane_2.tsv", "\t", 
-    escape_double = FALSE, trim_ws = TRUE)
-head(data,10)
-str(data)
-```
-
-###Oczyszczanie danych###
-
-Dane w formie tekstu zmieniam na factory.
-
-```{r }
-data<-as.data.frame(data)
-
-data[,4]<-parse_factor(data[,4],levels=unique(sort(data[,4])))
-data[,5]<-parse_factor(data[,5],levels=c("poniżej 5 tysięcy","5 - 20 tysięcy","20 - 100 tysięcy", "100 - 200 tysięcy","200 - 500 tysięcy","powyżej 500 tysięcy"))
-data[,11]<-parse_factor(data[,11],levels=c("Artystyczna","Ekonomiczna","Pedagogiczna","Techniczna","Uniwersytet","Inna"))
-data[,12]<-parse_factor(data[,12],levels=c("Architektura","Automatyka/elektrotechnika","Biologia","Chemia","Dziennikarstwo/komunikacja społeczna","Ekonometria","Ekonomia/finanse","Farmacja","Filologia","Fizyka/astronomia","Geografia","Historia","Informatyka/telekomunikacja","Inżynieria biomedyczna","Inżynieria chemiczna","Inżynieria lądowa/budownictwo/transport","Inżynieria materiałowa","Inżynieria mechaniczna","Inżynieria środowiska/energetyka/górnictwo","Kulturoznawstwo/religioznawstwo","Matematyka","Medycyna","Nauki o bezpieczeństwie","Pedagogika","Prawo/administracja","Psychologia","Socjologia","Sztuki piękne","Technologia żywności","Weterynaria/zootechnika","Zarządzanie","Inne"))
-data[,16]<-parse_factor(data[,16],levels=unique(sort(data[,16])))
-data[,28]<-parse_factor(data[,28],levels=c("Jeszcze nie pracuję","Przed początkiem studiów","I rok","II rok", "III rok","IV rok","V rok", "Później"))
-
-head(data)
-```
-
-W 2 pytaniach otwartych należy oczyścić odpowiedzi.
-
-```{r}
-table(data[,6])
-data[,3] <- replace(data[,3],data[,3]=="19, rocznikowo 20", "19")
-data[,3]<-as.numeric(data[,3])
-Krk<-c('Kraków','Krakow','krk','Krakó','Kraków xD')
-data[,6]<-gsub(paste(Krk, collapse = '|'), 'Kraków', data[,6])
-Krk<-c('Warszawa','Wawa','Warszasa')
-data[,6]<-gsub(paste(Krk, collapse = '|'), 'Warszawa', data[,6])
-Krk<-c("Poznań","poznań","Poznan")
-data[,6]<-gsub(paste(Krk, collapse = '|'), 'Poznań', data[,6])
-Krk<-c('Gdańsk','Gdansk')
-data[,6]<-gsub(paste(Krk, collapse = '|'), 'Gdańsk', data[,6])
-
-Krk<-c("BIAŁYSTOK", "Białystok")
-data[,6]<-gsub(paste(Krk, collapse = '|'), 'Białystok', data[,6])
-
-Krk<-c("słupsk", "Słupsk")
-data[,6]<-gsub(paste(Krk, collapse = '|'), 'Słupsk', data[,6])
-
-Krk<-c("Deblin", "Dęblin")
-data[,6]<-gsub(paste(Krk, collapse = '|'), 'Dęblin', data[,6])
-
-Krk<-c("Toruń, Poznań", "Toruń")
-data[,6]<-gsub(paste(Krk, collapse = '|'), 'Toruń', data[,6])
-
-data[,6] <- replace(data[,6],data[,6]=="Uniwersytet Śląski", "Katowice")
-
-table(data[,6])
-head(data)
-```
-
-Zmieniam factory z 2 odpowiedziami na zmienne zero-jedynkowe.
-
-```{r}
-data[,2]<-if_else(data[,2]=="Kobieta",1,0)
-data[,6]<-parse_factor(data[,6],levels=unique(sort(data[,6])))
-data[,9]<-if_else(data[,9]=="Prywatna",1,0)
-data[,10]<-if_else(data[,10]=="Zaocznie",1,0)
-data[,7]<-if_else(data[,7]=="Tak",1,0)
-data[,13:15]<-if_else(data[,13:15]=="Tak",1,0)
-data[,17]<-if_else(data[,17]=="Tak",1,0)
-head(data)
-```
-
-Odpowiedzi do pytania o lokum wyeksportowane zostały w formie tekstowej, z zaznaczonymi opcjami wymienionymi po przecinku. Aby to wyodrębnić, używam kombinacji if_else i str_detect.
-
-```{r}
-data<-data%>%
-  mutate(Akademik=if_else(str_detect(data[,18],coll("Akademik")),1,0),
-         Dom_mieszkanie_rodzinne=if_else(str_detect(data[,18],coll("Dom/mieszkanie rodzinne")),1,0),
-         Wynajete_mieszkanie=if_else(str_detect(data[,18],coll("Wynajęte mieszkanie")),1,0),
-         Wynajety_pokoj=if_else(str_detect(data[,18],coll("Wynajęty pokój")),1,0),
-         Inne=if_else(str_detect(data[,18],coll("Inne")),1,0))
-```
-df - oczyszczona wersja danych
-Wyrzucam kolumnę z feedbackiem, sygnaturę czasową oraz pytanie o lokum, które zostało już rozbite.
-
-```{r}
-df<-data[,-29]
-df<-df[,-18]
-df<-df[,-1]
-```
-
-Dla większej czytelności zmieniam nazwy zmiennych.
-
-```{r}
-colnames(df)[1:31]<-c('Kobieta','Wiek','Wojewodztwo_pochodzenia', 'Wielkosc_miasta', 'Miasto', 'Wiecej_kierunkow', 'Rok','Prywatna','Zaocznie', 'Typ','Dziedzina','Kola','Organizacje','Samorzad','Srednia','Stypendium','Wiodace','Zapychacze','Zapychacze_dobor','Jezyk','Organizacja_uczelni','Plany','Trudnosc','Przydatnosc','Ogolna_ocena','Praca','Akademik','Dom_mieszkanie_rodzinne','Wynajete_mieszkanie','Wynajety_pokoj','Inne')
-colnames(df)
-```
-
-Mniej więcej w tym miejscu zaczyna się ściernisko, ale będzie San Francisco.
-
-próba random forest
-
-```{r}
-model_rf<-randomForest::randomForest(Praca~.,data=df, importance=TRUE)
-print(model_rf)
-importance(model_rf)
-varImpPlot(model_rf)
-```
-
-Od razu widoczne są problemy - ledwie pojedyncze przeypadki są klasyfikowane inaczej, niż jako "jeszcze nie pracuję". Output jest niezbalansowany, ponad połowa osób wpada do jednej opcji, więc model wyciąga błędne wnioski.
-
-Zacznę od uogólnienia kolumny dziedzina studiów, posługując się aktualnymi dyscyplinami, do których przypisane są kierunki - są one bardzo niedokładne, ale stanowią chociaż jakąś podstawę do klasyfikacji.
-
-```{r}
-levels(df$Dziedzina)
-df2<-df%>%
-  mutate(Dyscyplina = ifelse(Dziedzina %in% c('Biologia','Chemia', 'Geografia'),'Nauki przyrodnicze',ifelse(Dziedzina %in% c('Psychologia','Socjologia','Zarządzanie','Nauki o bezpieczeństwie','Pedagogika','Ekonomia/finanse','Ekonometria','Prawo/administracja','Dziennikarstwo/komunikacja społeczna'),'Nauki spoleczne',ifelse(Dziedzina %in% c('Inżynieria biomedyczna','Inżynieria chemiczna','Inżynieria materiałowa','Inżynieria mechaniczna','Inżynieria środowiska/energetyka/górnictwo','Inżynieria lądowa/budownictwo/transport',"Architektura","Automatyka/elektrotechnika"),'Nauki inzynieryjno-techniczne',ifelse(Dziedzina %in% c('Historia','Kulturoznawstwo/religioznawstwo',"Filologia"),'Nauki humanistyczne',ifelse(Dziedzina %in% c('Medycyna','Farmacja'),'Nauki o zdrowiu',ifelse(Dziedzina %in% c('Fizyka/astronomia','Informatyka/telekomunikacja',"Matematyka"),'Nauki scisle',ifelse(Dziedzina %in% c("Technologia żywności","Weterynaria/zootechnika" ),'Nauki rolnicze',levels(df$Dziedzina)[Dziedzina]))))))))
-#this code is ugly as fuck, but well, at least it's work
-df2[,32]<-parse_factor(df2[,32],levels=unique(sort(df2[,32])))
-levels(df2[,31])
-df2<-df2[,-11]
-head(df2)
-```
-
-Kolejnym etapem jest powiązanie miast, które w praktyce mogą być traktowane jako jedno - Trójmiasta oraz konurbacji śląskiej.
-
-```{r}
-df3<-df2
-unique(df3[,5])
-Wekt<-c('Gdańsk','Gdynia','Sopot')
-df3[,5]<-gsub(paste(Wekt, collapse = '|'), 'Trójmiasto', df3[,5])
-Wekt<-c('Katowice','Bytom','Gliwice','Sosnowiec','Zabrze')
-df3[,5]<-gsub(paste(Wekt, collapse = '|'), 'Śląsk', df3[,5])
-df3[,5]<-parse_factor(df3[,5],levels=unique(sort(df3[,5])))
-```
-
-Ostatnim elementem jest uproszczenie outputu - opcja niepracująca to ponad 60% odpowiedzi, podczas gdy II stopień i "później" to niespełna 5%. W tej chwili rozważam usunięcie odpowiedzi bądź połączenie ich z III rokiem, ale na razie się wstrzymam. Rozwiązaniem być może byłoby też odpowiednie próbkowanie.
-
-```{r}
-table(df3$Praca)
-levels(df3$Praca)
-df4<-df3
-Wekt<-c('I rok','II rok','III rok')
-df4[,25]<-gsub(paste(Wekt, collapse = '|'), 'I stopień', df4[,25])
-Wekt<-c('IV rok', 'V rok', 'Później')
-df4[,25]<-gsub(paste(Wekt, collapse = '|'), 'II stopień i później', df4[,25])
-df4[,25]<-parse_factor(df4[,25],levels=unique(sort(df4[,25])))
-```
-
-Również ważne - należy pobawić się więcej z parametrami oraz miarami, problemem jest bardzo niski odsetek dla II stopnia, później i przed początkiem.
-
-Opcje do spróbowania:
-algorytm SMOTE
-"przed", "I rok", "II rok", "III i później"
-Wyrzucenie opcji powyżej III roku
-"Pracuje", "Nie pracuje" (najlepsze?)
-Sampling opcji niepracującej
-
-```{r}
-model2<-randomForest::randomForest(Praca~.,data=df4,importnace=TRUE)
-print(model2)
-importance(model2)
-varImpPlot(model2)
-table(df4$Praca)
-```
-
-
-###3 ROK RAZEM Z OPCJAMI WYZSZYMI###
-
-```{r}
-df5<-df3
-Wekt<-c('III rok','IV rok', 'V rok', 'Później')
-df5[,25]<-gsub(paste(Wekt, collapse = '|'), 'III rok i później', df5[,25])
-df5[,25]<-parse_factor(df5[,25],levels=unique(sort(df5[,25])))
-table(df5$Praca)
-```
-
-```{r}
-model3<-randomForest::randomForest(Praca~.,data=df5,importance=TRUE)
-print(model3)
-importance(model3)
-varImpPlot(model3)
-```
-
-Cóż, wyszło jeszcze gorzej.
-
-###OPCJA ZEROJEDYNKOWA###
-
-```{r}
-#można to zrobić zgrabniej, ale na tym etapie chcę przede wszystkim sprawdzić, czy przyniesie to znaczącą poprawę
-df6<-df3
-Wekt<-c('Przed początkiem studiów','I rok','II rok','III rok','IV rok', 'V rok', 'Później')
-df6[,25]<-gsub(paste(Wekt, collapse = '|'), 'Pracuję', df6[,25])
-df6[,25]<-parse_factor(df6[,25],levels=unique(sort(df6[,25])))
-levels(df6$Praca)
-table(df6$Praca)
-```
-
-```{r}
+```{r echo=FALSE, message=FALSE}
 set.seed(42)
-model4<-randomForest(Praca~.,data=df6,ntree=1000,mtry=5,importance=TRUE,sampsize=c(155,155))
-print(model4)
-importance(model4,class=TRUE)
-varImpPlot(model4)
+data <- read.table("E:/survey_model/dane_ankieta.tsv",sep="\t",header=TRUE,fileEncoding = "UTF-8", check.names=FALSE)
 ```
 
-W końcu wygląda to... no, może nie lepiej, ale ludzko. Wciąż jest bardzo duży błąd w opcji pracującej, ale klasyfikator zaczął chociaż myśleć, a nie automatycznie wybierać bezrobotnych.
 
-```{r}
-help(randomForest)
-help(importance)
+```{r echo=FALSE}
+head(data,10)
+data[,27]<-as.factor(data[,27])
 ```
 
-Atm to najlepsze, choć wciąż nie dobre. Gorzej radzi sobie z niepracującymi, za to nieco lepiej z pracującymi.
+Na potrzeby modelu, usunąć należy kolumny bez zdolności predykcyjnej - sygnaturę czasową, dobrowolny feedback oraz pytanie o miejsce zamieszkanie w trakcie studiów, które zostało już rozbite na 5 zmiennych zero-jedynkowych.
 
-###WYRZUCENIE NIEZDECYDOWANYCH###
-
-```{r}
-df0<-data[,-18]
+```{r echo=FALSE}
+df0<-data[,-28]
+df0<-df0[,-17]
 df0<-df0[,-1]
 ```
 
-```{r}
-colnames(df0)[1:32]<-c('Kobieta','Wiek','Wojewodztwo_pochodzenia', 'Wielkosc_miasta', 'Miasto', 'Wiecej_kierunkow', 'Rok','Prywatna','Zaocznie', 'Typ','Dziedzina','Kola','Organizacje','Samorzad','Srednia','Stypendium','Wiodace','Zapychacze','Zapychacze_dobor','Jezyk','Organizacja_uczelni','Plany','Trudnosc','Przydatnosc','Ogolna_ocena','Praca','Feedback','Akademik','Dom_mieszkanie_rodzinne','Wynajete_mieszkanie','Wynajety_pokoj','Inne')
-df0<-df0%>%
-  mutate(Dyscyplina = ifelse(Dziedzina %in% c('Biologia','Chemia', 'Geografia'),'Nauki przyrodnicze',ifelse(Dziedzina %in% c('Psychologia','Socjologia','Zarządzanie','Nauki o bezpieczeństwie','Pedagogika','Ekonomia/finanse','Ekonometria','Prawo/administracja','Dziennikarstwo/komunikacja społeczna'),'Nauki spoleczne',ifelse(Dziedzina %in% c('Inżynieria biomedyczna','Inżynieria chemiczna','Inżynieria materiałowa','Inżynieria mechaniczna','Inżynieria środowiska/energetyka/górnictwo','Inżynieria lądowa/budownictwo/transport',"Architektura","Automatyka/elektrotechnika"),'Nauki inzynieryjno-techniczne',ifelse(Dziedzina %in% c('Historia','Kulturoznawstwo/religioznawstwo',"Filologia"),'Nauki humanistyczne',ifelse(Dziedzina %in% c('Medycyna','Farmacja'),'Nauki o zdrowiu',ifelse(Dziedzina %in% c('Fizyka/astronomia','Informatyka/telekomunikacja',"Matematyka"),'Nauki scisle',ifelse(Dziedzina %in% c("Technologia żywności","Weterynaria/zootechnika" ),'Nauki rolnicze',levels(df$Dziedzina)[Dziedzina]))))))))
-df0[,33]<-parse_factor(df0[,33],levels=unique(sort(df0[,33])))
-df0<-df0[,-11]
-Wekt<-c('Gdańsk','Gdynia','Sopot')
-df0[,5]<-gsub(paste(Wekt, collapse = '|'), 'Trójmiasto', df0[,5])
-Wekt<-c('Katowice','Bytom','Gliwice','Sosnowiec','Zabrze')
-df0[,5]<-gsub(paste(Wekt, collapse = '|'), 'Śląsk', df0[,5])
-df0[,5]<-parse_factor(df0[,5],levels=unique(sort(df0[,5])))
-Wekt<-c('Przed początkiem studiów','I rok','II rok','III rok','IV rok', 'V rok', 'Później')
-df0[,25]<-gsub(paste(Wekt, collapse = '|'), 'Pracuję', df0[,25])
-df0[,25]<-parse_factor(df0[,25],levels=unique(sort(df0[,25])))
-levels(df0$Praca)
-table(df0$Praca)
+Dla większej czytelności zmieniono nazwy kolumn.
+
+```{r echo=FALSE}
+colnames(df0)[1:31]<-c('Kobieta','Wiek','Wojewodztwo_pochodzenia', 'Wielkosc_miasta', 'Miasto', 'Wiecej_kierunkow', 'Rok','Prywatna','Zaocznie', 'Typ','Kola','Organizacje','Samorzad','Srednia','Stypendium','Wiodace','Zapychacze','Zapychacze_dobor','Jezyk','Organizacja_uczelni','Plany','Trudnosc','Przydatnosc','Ogolna_ocena','Praca','Akademik','Dom_mieszkanie_rodzinne','Wynajete_mieszkanie','Wynajety_pokoj','Inne','Dyscyplina')
+colnames(df0)
+df<-df0
 ```
 
-```{r}
-df0[!(is.na(df0[,26])),25:26] #analiza feedbacku - respondenci zgłaszający problemy z zaznaczeniem odpowiadających ich sytuacji opcji zostaną usunięci z danych
-df01<-df0[-c(60, 103, 240, 244, 258,276, 321,345,347,348,366,87, 264),-26]
+# MODELE
 
+```{r echo=FALSE}
+model1<-randomForest(Praca~.,data=df,ntree=1000,mtry=5,importance=TRUE)
+print(model1)
+importance(model1,class=TRUE)
 ```
 
-
-```{r}
-table(df01$Praca)
-model5<-randomForest(Praca~.,data=df01,ntree=500,mtry=6,importance=TRUE,sampsize=c(150,150))
-print(model5)
-importance(model5,class=TRUE)
-plot(model5) #zielony - pracuję, czarny - średni, czerwony - jeszcze nie
-varImpPlot(model5)
-#str(model5)
-
+```{r echo=FALSE}
+plot(model1)
+auc_model<-auc(df$Praca,model1$predicted)
+err<-(model1$confusion[2]+model1$confusion[3])/nrow(df)
+acc<-(model1$confusion[1]+model1$confusion[4])/nrow(df)
+sens<-model1$confusion[1]/(model1$confusion[1]+model1$confusion[3])
+spec<-model1$confusion[4]/(model1$confusion[4]+model1$confusion[2])
+gmean<-sqrt(sens*spec)
+recall<-model1$confusion[1]/(model1$confusion[1]+model1$confusion[2])
+prec<-model1$confusion[1]/(model1$confusion[1]+model1$confusion[3])
+cat("AUC: ", auc_model,"\nOOB Error: ", err,"\nAccuracy: ", acc,"\nSensitivity: ", sens,"\nSpecifity: ", spec,"\nG-Mean: ", gmean,"\nRecall: ", recall,"\nPrecision: ", prec)
 ```
 
-Z 13 usuniętych przypadków, 8 było błędni klasyfikowanych - 5 "pracujących" było uznawanych za bezrobotnych, 3 bezrobotnych - za pracujących. Przyniosło to delikatną poprawę.
+Pierwszy zbudowany model cechuje stosunkowa dobra dokładność - 72,5%. Ma dość wysoką czułość kosztem niskiej swoistości - wiąże się to z dużo lepszym wykrywaniem bezrobotnych, podczas gdy skuteczność w przypadku pracujących wynosi niewiele ponad 50%. Najprawdopodobniej wpływ na to ma dysproporcja w próbkach. W następnym modelu zostaną one wyrównane.
 
-```{r}
-(err<-(model5$confusion[2]+model5$confusion[3])/400)
-(acc<-(model5$confusion[1]+model5$confusion[4])/400)
-(sens<-model5$confusion[1]/(model5$confusion[1]+model5$confusion[3]))
-(spec<-model5$confusion[4]/(model5$confusion[4]+model5$confusion[2]))
-(gmean<-sqrt(sens*spec))
-(recall<-model5$confusion[1]/(model5$confusion[1]+model5$confusion[2]))
-(prec<-model5$confusion[1]/(model5$confusion[1]+model5$confusion[3]))
+## Model z wyrównanymi próbkami
+
+```{r echo=FALSE}
+model2<-randomForest(Praca~.,data=df,ntree=1000,mtry=5,importance=TRUE,sampsize=c(155,155))
+print(model2)
+importance(model2,class=TRUE)
 ```
 
-###PRÓBA ELIMINACJI NIEPOTRZEBNYCH ZMIENNYCH#
-
-```{r}
-df02<-df01[,-13]
-
+```{r echo=FALSE}
+plot(model2)
+auc_model<-auc(df$Praca,model2$predicted)
+err<-(model2$confusion[2]+model2$confusion[3])/nrow(df)
+acc<-(model2$confusion[1]+model2$confusion[4])/nrow(df)
+sens<-model2$confusion[1]/(model2$confusion[1]+model2$confusion[3])
+spec<-model2$confusion[4]/(model2$confusion[4]+model2$confusion[2])
+gmean<-sqrt(sens*spec)
+recall<-model2$confusion[1]/(model2$confusion[1]+model2$confusion[2])
+prec<-model2$confusion[1]/(model2$confusion[1]+model2$confusion[3])
+cat("AUC: ", auc_model,"\nOOB Error: ", err,"\nAccuracy: ", acc,"\nSensitivity: ", sens,"\nSpecifity: ", spec,"\nG-Mean: ", gmean,"\nRecall: ", recall,"\nPrecision: ", prec)
 ```
 
+Ogólna skuteczność, jak i AUC uległo pogorszeniu. W zamian za to, wyrównaniu uległy czułość i swoistość, i model radzi sobie z klasyfikacją obu grup w podobnym stopniu. Pomimo nieco gorszych wyników, ma on większą wartość.
 
+## PODZIAŁ NA DANE TESTOWE I TRENINGOWE
 
-```{r}
-table(df02$Praca)
-model6<-randomForest(Praca~.,data=df02,ntree=500,mtry=6,importance=TRUE,sampsize=c(150,150))
-print(model6)
-importance(model6,class=TRUE)
-plot(model6) #zielony - pracuję, czarny - średni, czerwony - jeszcze nie
-varImpPlot(model6)
-#str(model5)
+Przyjmuję wstępnie podział 70% dla danych uczących i 30% dla testowych.
 
+```{r echo=FALSE}
+n <- nrow(df)
+n_train <- round(0.7 * n) 
+train_indices <- sample(1:n, n_train)
+df_train <- df[train_indices, ]  
+df_test <- df[-train_indices, ]  
 ```
 
+```{r echo=FALSE}
+table(df_train$Praca)
+model_train<-randomForest(Praca~.,data=df_train,ntree=1000,mtry=5,importance=TRUE,sampsize=c(78,78))
+print(model_train)
+importance(model_train,class=TRUE)
+```
+
+```{r echo=FALSE}
+plot(model_train)
+```
+
+```{r echo=FALSE}
+test_rf<-predict(model_train,newdata=df_test)
+mtx<-as.matrix(table(test_rf,df_test$Praca))
+auc_model<-auc(df_test$Praca,test_rf)
+err<-(mtx[2]+mtx[3])/nrow(df_test)
+acc<-(mtx[1]+mtx[4])/nrow(df_test)
+sens<-mtx[1]/(mtx[1]+mtx[3])
+spec<-mtx[4]/(mtx[4]+mtx[2])
+gmean<-sqrt(sens*spec)
+recall<-mtx[1]/(mtx[1]+mtx[2])
+prec<-mtx[1]/(mtx[1]+mtx[3])
+cat("AUC: ", auc_model,"\nOOB Error: ", err,"\nAccuracy: ", acc,"\nSensitivity: ", sens,"\nSpecifity: ", spec,"\nG-Mean: ", gmean,"\nRecall: ", recall,"\nPrecision: ", prec)
+```
+
+Sytuacja w tym momencie wydaje się dość zastanawiająca. Wyniki na zbiorze testowym prezentują się lepiej, niż na treningowym - jest niższy błąd, AUC wygląda lepiej, niż w poprzednich modelach. Nie do końca wiem, gdzie (i czy) robię błąd.
+
+## Próba wykluczenia z modelu obserwacji o wątpliwej wiarygodności
+
+Niektórzy z respondentów w pytaniu o feedback zgłaszali problemy z ankietą - najczęściej były to wątpliwości co do przypisania swojej uczelni bądź kierunku, niekiedy niepewność co do właściwego interpretowania swojej pracy - czy jest ona związana ze studiami. Do następnego modelu wykorzystane zostaną dane oczyszczone z takich obserwacji.
+
+```{r echo=FALSE, message=FALSE,warning=FALSE}
+df1<-df0[,-17]
+df1<-df1[,-1]
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#df0[!(is.na(df0[,26])),25:26] #analiza feedbacku - respondenci zgłaszający problemy z zaznaczeniem odpowiadających ich sytuacji opcji zostaną usunięci z danych
+df2<-df1[-c(60, 103, 240, 244, 258,276, 321,345,347,348,366,87, 264),-26]
+```
+
+```{r echo=FALSE}
+table(df2$Praca)
+model3<-randomForest(Praca~.,data=df2,ntree=1000,mtry=5,importance=TRUE,sampsize=c(150,150))
+print(model3)
+importance(model3,class=TRUE)
+```
+
+```{r echo=FALSE}
+plot(model3) #zielony - pracuję, czarny - średni, czerwony - jeszcze nie
+varImpPlot(model3)
+```
+
+Wykres modelu przedstawia kształtowanie się błędu poza próbką w raz ze wzrostem liczby drzew. Po gwałtownym zmniejszaniu do około 350, następuje stablizacja, najniższe wartości osiągając w granicach 700 i ustrzymując się od tej pory na stosunkowo stabilnym poziomie. Zielona linia oznacza błąd w klasyfikacji pracujących, czerwona - niepracujących, a czarna - uśredniony dla obu grup.
+
+```{r echo=FALSE}
+auc_model<-auc(df2$Praca,model3$predicted)
+err<-(model3$confusion[2]+model3$confusion[3])/400
+acc<-(model3$confusion[1]+model3$confusion[4])/400
+sens<-model3$confusion[1]/(model3$confusion[1]+model3$confusion[3])
+spec<-model3$confusion[4]/(model3$confusion[4]+model3$confusion[2])
+gmean<-sqrt(sens*spec)
+recall<-model3$confusion[1]/(model3$confusion[1]+model3$confusion[2])
+prec<-model3$confusion[1]/(model3$confusion[1]+model3$confusion[3])
+cat("AUC: ", auc_model,"\nOOB Error: ", err,"\nAccuracy: ", acc,"\nSensitivity: ", sens,"\nSpecifity: ", spec,"\nG-Mean: ", gmean,"\nRecall: ", recall,"\nPrecision: ", prec)
+```
+
+Z 13 usuniętych przypadków, 8 było błędni klasyfikowanych - 5 pracujących było uznawanych za bezrobotnych, 3 bezrobotnych - za pracujących. Przyniosło to delikatną poprawę; jest to najlepszy z dotychczasowych modeli na pełnych danych.
+
+### Model oczyszczony z wątpliwych obserwacji z podziałem na dane treningowe i testowe
+
+Podobnie jak wcześniej, przyjmuję podział 0,7:0,3.
+
+```{r echo=FALSE}
+n <- nrow(df2)
+n_train <- round(0.7 * n) 
+train_indices <- sample(1:n, n_train)
+df_train2 <- df2[train_indices, ]  
+df_test2 <- df2[-train_indices, ]  
+```
+
+```{r echo=FALSE}
+table(df_train2$Praca)
+model_train2<-randomForest(Praca~.,data=df_train2,ntree=1000,mtry=5,importance=TRUE,sampsize=c(100,100))
+print(model_train2)
+importance(model_train2,class=TRUE)
+
+(auc(df_train2$Praca,model_train2$predicted))
+```
+
+```{r echo=FALSE}
+test_rf<-predict(model_train2,newdata=df_test2)
+mtx<-as.matrix(table(test_rf,df_test2$Praca))
+auc_model<-auc(df_test2$Praca,test_rf)
+err<-(mtx[2]+mtx[3])/nrow(df_test2)
+acc<-(mtx[1]+mtx[4])/nrow(df_test2)
+sens<-mtx[1]/(mtx[1]+mtx[3])
+spec<-mtx[4]/(mtx[4]+mtx[2])
+gmean<-sqrt(sens*spec)
+recall<-mtx[1]/(mtx[1]+mtx[2])
+prec<-mtx[1]/(mtx[1]+mtx[3])
+cat("AUC: ", auc_model,"\nOOB Error: ", err,"\nAccuracy: ", acc,"\nSensitivity: ", sens,"\nSpecifity: ", spec,"\nG-Mean: ", gmean,"\nRecall: ", recall,"\nPrecision: ", prec)
+```
+
+Po raz kolejny skuteczność na danych testowych jest wyższa, niż na treningowych. Być może spowodowane jest to mniejszą liczbą danych.
