@@ -50,6 +50,8 @@ print(model1)
 importance(model1,class=TRUE)
 ```
 
+Wykres modelu przedstawia kształtowanie się błędu poza próbką w raz ze wzrostem liczby drzew. Po gwałtownym zmniejszaniu do około 200, następuje stablizacja. Zielona linia oznacza błąd w klasyfikacji pracujących, czerwona - niepracujących, a czarna - uśredniony dla obu grup.
+
 ```{r echo=FALSE}
 plot(model1)
 auc_model<-auc(df$Praca,model1$predicted)
@@ -63,7 +65,7 @@ prec<-model1$confusion[1]/(model1$confusion[1]+model1$confusion[3])
 cat("AUC: ", auc_model,"\nOOB Error: ", err,"\nAccuracy: ", acc,"\nSensitivity: ", sens,"\nSpecifity: ", spec,"\nG-Mean: ", gmean,"\nRecall: ", recall,"\nPrecision: ", prec)
 ```
 
-Pierwszy zbudowany model cechuje stosunkowa dobra dokładność - 72,5%. Ma dość wysoką czułość kosztem niskiej swoistości - wiąże się to z dużo lepszym wykrywaniem bezrobotnych, podczas gdy skuteczność w przypadku pracujących wynosi niewiele ponad 50%. Najprawdopodobniej wpływ na to ma dysproporcja w próbkach. W następnym modelu zostaną one wyrównane.
+Pierwszy zbudowany model cechuje stosunkowa dobra dokładność - ponad 70%. Ma dość wysoką czułość kosztem niskiej swoistości - wiąże się to z dużo lepszym wykrywaniem bezrobotnych, podczas gdy skuteczność w przypadku pracujących wynosi niewiele ponad 50%. Najprawdopodobniej wpływ na to ma dysproporcja w próbkach. W następnym modelu zostaną one wyrównane.
 
 ## Model z wyrównanymi próbkami
 
@@ -86,11 +88,11 @@ prec<-model2$confusion[1]/(model2$confusion[1]+model2$confusion[3])
 cat("AUC: ", auc_model,"\nOOB Error: ", err,"\nAccuracy: ", acc,"\nSensitivity: ", sens,"\nSpecifity: ", spec,"\nG-Mean: ", gmean,"\nRecall: ", recall,"\nPrecision: ", prec)
 ```
 
-Ogólna skuteczność, jak i AUC uległo pogorszeniu. W zamian za to, wyrównaniu uległy czułość i swoistość, i model radzi sobie z klasyfikacją obu grup w podobnym stopniu. Pomimo nieco gorszych wyników, ma on większą wartość.
+Ogólna skuteczność uległa pogorszeniu. W zamian za to, wyrównaniu uległy czułość i swoistość, i model radzi sobie z klasyfikacją obu grup w podobnym stopniu. Pomimo nieco gorszych wyników, ma on większą wartość.
 
 ## PODZIAŁ NA DANE TESTOWE I TRENINGOWE
 
-Przyjmuję wstępnie podział 70% dla danych uczących i 30% dla testowych.
+Po "testowych" modelach na całości danych, przyjęto wstępnie podział 70% dla danych uczących i 30% dla testowych.
 
 ```{r echo=FALSE}
 n <- nrow(df)
@@ -125,8 +127,6 @@ prec<-mtx[1]/(mtx[1]+mtx[3])
 cat("AUC: ", auc_model,"\nOOB Error: ", err,"\nAccuracy: ", acc,"\nSensitivity: ", sens,"\nSpecifity: ", spec,"\nG-Mean: ", gmean,"\nRecall: ", recall,"\nPrecision: ", prec)
 ```
 
-Sytuacja w tym momencie wydaje się dość zastanawiająca. Wyniki na zbiorze testowym prezentują się lepiej, niż na treningowym - jest niższy błąd, AUC wygląda lepiej, niż w poprzednich modelach. Nie do końca wiem, gdzie (i czy) robię błąd.
-
 ## Próba wykluczenia z modelu obserwacji o wątpliwej wiarygodności
 
 Niektórzy z respondentów w pytaniu o feedback zgłaszali problemy z ankietą - najczęściej były to wątpliwości co do przypisania swojej uczelni bądź kierunku, niekiedy niepewność co do właściwego interpretowania swojej pracy - czy jest ona związana ze studiami. Do następnego modelu wykorzystane zostaną dane oczyszczone z takich obserwacji.
@@ -153,7 +153,7 @@ plot(model3) #zielony - pracuję, czarny - średni, czerwony - jeszcze nie
 varImpPlot(model3)
 ```
 
-Wykres modelu przedstawia kształtowanie się błędu poza próbką w raz ze wzrostem liczby drzew. Po gwałtownym zmniejszaniu do około 350, następuje stablizacja, najniższe wartości osiągając w granicach 700 i ustrzymując się od tej pory na stosunkowo stabilnym poziomie. Zielona linia oznacza błąd w klasyfikacji pracujących, czerwona - niepracujących, a czarna - uśredniony dla obu grup.
+Po gwałtownym zmniejszaniu do około 350, następuje stablizacja, najniższe wartości osiągając w granicach 600 i ustrzymując się od tej pory na stosunkowo stabilnym poziomie. Zielona linia oznacza błąd w klasyfikacji pracujących, czerwona - niepracujących, a czarna - uśredniony dla obu grup.
 
 ```{r echo=FALSE}
 auc_model<-auc(df2$Praca,model3$predicted)
@@ -186,8 +186,10 @@ table(df_train2$Praca)
 model_train2<-randomForest(Praca~.,data=df_train2,ntree=1000,mtry=5,importance=TRUE,sampsize=c(104,104))
 print(model_train2)
 importance(model_train2,class=TRUE)
+```
 
-(auc(df_train2$Praca,model_train2$predicted))
+```{r echo=FALSE}
+cat("AUC na danych treningowych: ", auc(df_train2$Praca,model_train2$predicted))
 ```
 
 ```{r echo=FALSE}
@@ -203,5 +205,3 @@ recall<-mtx[1]/(mtx[1]+mtx[2])
 prec<-mtx[1]/(mtx[1]+mtx[3])
 cat("AUC: ", auc_model,"\nOOB Error: ", err,"\nAccuracy: ", acc,"\nSensitivity: ", sens,"\nSpecifity: ", spec,"\nG-Mean: ", gmean,"\nRecall: ", recall,"\nPrecision: ", prec)
 ```
-
-Po raz kolejny skuteczność na danych testowych jest wyższa, niż na treningowych. Być może spowodowane jest to mniejszą liczbą danych.
