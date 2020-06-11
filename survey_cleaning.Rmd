@@ -11,6 +11,7 @@ output: html_document
 require(tidyverse)
 require(stringr)
 require(tm)
+require(viridis)
 ```
 
 Pierwszym etapem jest import i podgląd danych do analizy.
@@ -42,7 +43,9 @@ data[,28]<-parse_factor(data[,28],levels=c("Jeszcze nie pracuję","Przed począt
 ```
 
 
-Oczyszczanie odpowiedzi - ujednolicenie odpowiedzi bez polskich znaków, z literówkami, dodatkowymi komentarzamim, a także połączenie tych miast, w przypadku których nie ma różnicy w dostępie do pracy, uczelni czy w średnich cenach, i które w praktyce można niemal traktować jak jedno miasto - Trójmiasto oraz Górnośląski Okręg Przemysłowy.
+
+
+Oczyszczanie odpowiedzi - ujednolicenie odpowiedzi bez polskich znaków, z literówkami, dodatkowymi komentarzami, a także połączenie tych miast, w przypadku których nie ma różnicy w dostępie do pracy, uczelni czy w średnich cenach, i które w praktyce można niemal traktować jak jedno miasto - Trójmiasto oraz Górnośląski Okręg Przemysłowy.
 
 Przed:
 
@@ -107,9 +110,19 @@ data<-data%>%
 ```
 
 
-Tworząc ankietę, użyty został aktualny podział na dziedziny ustalonego przez Ministerstwo Szkolnictwa Wyższego. Zmienna o 32 możliwych wartościach ma jednak niską wartość predykcyjną i zwiększa ryzyko wykrycia fałszywych korelacji (zwłaszcza w przypadku kierunków z niską liczbą respondentów). W tym celu zostaną one zastąpione przypisaniem do dyscyplin, które, choć niedokładne, pozwalają na większe uogólnienie i generalizację.
+Tworząc ankietę, użyty został aktualny podział na dziedziny ustalony przez Ministerstwo Szkolnictwa Wyższego. Zmienna o 32 możliwych wartościach ma jednak niską wartość predykcyjną i zwiększa ryzyko wykrycia fałszywych korelacji (zwłaszcza w przypadku kierunków z niską liczbą respondentów). W tym celu zostaną one zastąpione przypisaniem do dyscyplin, które, choć niedokładne, pozwalają na większe uogólnienie i generalizację.
 
 Przed:
+
+```{r}
+data2<-data%>%
+  group_by(data[,12])%>%
+  count()
+ggplot(data2, aes(x=data2$`data[, 12]`,y=data2$n,fill=data2$`data[, 12]`))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  theme(axis.text.x = element_text(angle = 70, hjust = 1))+ geom_text(aes(label = n), position = position_stack(vjust = 1.1))+
+  xlab('')+
+  ylab('')+scale_color_viridis(option = "D")
+```
 
 ```{r echo=FALSE}
 levels(data[,12])
@@ -123,6 +136,16 @@ data<-data[,-12]
 ```
 
 Po:
+
+```{r}
+data2<-data%>%
+  group_by(data[,34])%>%
+  count()
+ggplot(data2, aes(x=data2$`data[, 34]`,y=data2$n,fill=data2$`data[, 34]`))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  theme(axis.text.x = element_text(angle = 70, hjust = 1))+ geom_text(aes(label = n), position = position_stack(vjust = 1.1))+
+  xlab('')+
+  ylab('')+scale_color_viridis(option = "D")
+```
 
 ```{r echo=FALSE}
 levels(data[,34])
