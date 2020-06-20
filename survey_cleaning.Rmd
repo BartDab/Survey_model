@@ -125,13 +125,13 @@ ggplot(data2, aes(x=data2$`data[, 12]`,y=data2$n,fill=data2$`data[, 12]`))+geom_
 ```
 
 ```{r echo=FALSE}
-levels(data[,12])
+table(data[,12])
 ```
 
 ```{r}
 data<-data%>%
   mutate(Dyscyplina = ifelse(data[,12] %in% c('Biologia','Chemia', 'Geografia'),'Nauki przyrodnicze',ifelse(data[,12]  %in% c('Psychologia','Socjologia','Zarządzanie','Nauki o bezpieczeństwie','Pedagogika','Ekonomia/finanse','Ekonometria','Prawo/administracja','Dziennikarstwo/komunikacja społeczna'),'Nauki spoleczne',ifelse(data[,12]  %in% c('Inżynieria biomedyczna','Inżynieria chemiczna','Inżynieria materiałowa','Inżynieria mechaniczna','Inżynieria środowiska/energetyka/górnictwo','Inżynieria lądowa/budownictwo/transport',"Architektura","Automatyka/elektrotechnika"),'Nauki inzynieryjno-techniczne',ifelse(data[,12]  %in% c('Historia','Kulturoznawstwo/religioznawstwo',"Filologia"),'Nauki humanistyczne',ifelse(data[,12]  %in% c('Medycyna','Farmacja'),'Nauki o zdrowiu',ifelse(data[,12]  %in% c('Fizyka/astronomia','Informatyka/telekomunikacja',"Matematyka"),'Nauki scisle',ifelse(data[,12]  %in% c("Technologia żywności","Weterynaria/zootechnika" ),'Nauki rolnicze',levels(data[,12])[`Jaka dziedzina nauk najlepiej określa Twoje studia?`]))))))))
-data[,35]<-parse_factor(data[,35],levels=unique(sort(data[,35])))
+data[,35]<-parse_factor(data[,35],levels=c('Nauki humanistyczne','Nauki inzynieryjno-techniczne','Nauki o zdrowiu','Nauki przyrodnicze','Nauki rolnicze','Nauki scisle','Nauki spoleczne','Sztuki piękne','Inne'))
 data<-data[,-12]
 ```
 
@@ -148,7 +148,7 @@ ggplot(data2, aes(x=data2$`data[, 34]`,y=data2$n,fill=data2$`data[, 34]`))+geom_
 ```
 
 ```{r echo=FALSE}
-levels(data[,34])
+table(data[,34])
 ```
 
 Ostatnim elementem jest uproszczenie outputu - opcja niepracująca to ponad 60% odpowiedzi, podczas gdy II stopień i "później" łącznie to niespełna 5%. Aby to wyrównać, zastosowano generalizację wszystkich opcji "pracujących" i połączenie w jedną, o reprezentacji w danych wynoszącej blisko 40%. **1** oznacza osoby pracujące, **0** - nie.

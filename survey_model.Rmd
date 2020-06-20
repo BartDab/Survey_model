@@ -12,6 +12,8 @@ require(stringr)
 require(tm)
 require(randomForest)
 require(Metrics)
+require(viridis)
+require(gridExtra)
 ```
 
 Import przygotowanych danych i delikatne zmiany.
@@ -40,6 +42,97 @@ Dla większej czytelności zmieniono nazwy kolumn.
 colnames(df0)[1:31]<-c('Kobieta','Wiek','Wojewodztwo_pochodzenia', 'Wielkosc_miasta', 'Miasto', 'Wiecej_kierunkow', 'Rok','Prywatna','Zaocznie', 'Typ','Kola','Organizacje','Samorzad','Srednia','Stypendium','Wiodace','Zapychacze','Zapychacze_dobor','Jezyk','Organizacja_uczelni','Plany','Trudnosc','Przydatnosc','Ogolna_ocena','Praca','Akademik','Dom_mieszkanie_rodzinne','Wynajete_mieszkanie','Wynajety_pokoj','Inne','Dyscyplina')
 colnames(df0)
 df<-df0
+```
+
+# Eksploracyjna analiza danych
+
+```{r}
+summary(df0)
+```
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Kobieta)%>%
+  dplyr::count()
+g1<-ggplot(data2, aes(x=data2$Kobieta,y=data2$n,fill=data2$Kobieta))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+   geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+
+  ylab('')+scale_color_viridis(option = "C")+scale_x_discrete(limits=c(0,1))+ ggtitle('Płeć:')+theme(plot.title = element_text(hjust = 0.5))
+g1
+```
+
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Wiek)%>%
+  dplyr::count()
+g2<-ggplot(data2, aes(x=as.factor(data2$Wiek),y=data2$n,fill=as.factor(data2$Wiek)))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  theme(axis.text.x = element_text(angle = 70, hjust = 1))+ geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Wiek:')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "D")+ylim(0,105)
+g2
+```
+
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Wojewodztwo_pochodzenia)%>%
+  dplyr::count()
+g3<-ggplot(data2, aes(x=data2$Wojewodztwo_pochodzenia,y=data2$n,fill=data2$Wojewodztwo_pochodzenia))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+   geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+
+  ylab('')+scale_color_viridis(option = "C")+ ggtitle('Województwo pochodzenia:')+theme(plot.title = element_text(hjust = 0.5))+
+  theme(axis.text.x = element_text(angle = 70, hjust = 1))+ylim(0,100)
+g3
+```
+
+
+```{r}
+levels(df0$Wielkosc_miasta)<-c('poniżej 5 tysięcy','5 - 20 tysięcy', '20 - 100 tysięcy', '100 - 200 tysięcy', '200 - 500 tysięcy', 'powyżej 500 tysięcy')
+data2<-df0%>%
+  dplyr::group_by(Wielkosc_miasta)%>%
+  dplyr::count()
+g4<-ggplot(data2, aes(x=data2$Wielkosc_miasta,y=data2$n,fill=data2$Wielkosc_miasta))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Wielkość miasta:')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "D")+ylim(0,155)
+g4
+```
+
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Miasto)%>%
+  dplyr::count()
+g5<-ggplot(data2, aes(x=data2$Miasto,y=data2$n,fill=data2$Miasto))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Miasto:')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "D")+
+  theme(axis.text.x = element_text(angle = 70, hjust = 1))+ylim(0,140)
+g5
+```
+
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Wiecej_kierunkow)%>%
+  dplyr::count()
+g6<-ggplot(data2, aes(x=data2$Wiecej_kierunkow,y=data2$n,fill=data2$Wiecej_kierunkow))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Studiowanie więcej niż 1 kierunku:')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "D")+scale_x_discrete(limits=c(0,1))
+g6
+```
+
+```{r}
+levels(df0$Rok)<-c('Ukończyłem/ukończyłam studia','V','IV','III','II','I')
+data2<-df0%>%
+  dplyr::group_by(Rok)%>%
+  dplyr::count()
+g6<-ggplot(data2, aes(x=data2$Rok,y=data2$n,fill=data2$Rok))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Rok studiów')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")+coord_flip()
+g6
+levels(df0$Rok)<-c('I','II','III','IV','V','Ukończyłem/ukończyłam studia')
+```
+
+
+
+
+```{r}
+#figure <- grid.arrange(g1, g2, g3, g4, ncol=2,nrow=2)
+#figure
 ```
 
 # MODELE
