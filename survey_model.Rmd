@@ -47,7 +47,15 @@ df<-df0
 # Eksploracyjna analiza danych
 
 ```{r}
+df0$Wielkosc_miasta<-factor(df0$Wielkosc_miasta,level=c("poniżej 5 tysięcy","5 - 20 tysięcy","20 - 100 tysięcy", "100 - 200 tysięcy","200 - 500 tysięcy","powyżej 500 tysięcy"))
+df0$Rok<-factor(df0$Rok,level=c('I','II','III','IV','V','Ukończyłem/ukończyłam studia'))
+df0$Typ<-factor(df0$Typ,level=c("Artystyczna","Ekonomiczna","Pedagogiczna","Techniczna","Uniwersytet","Inna"))
+df0$Dyscyplina<-factor(df0$Dyscyplina,level=c('Nauki humanistyczne','Nauki inzynieryjno-techniczne','Nauki o zdrowiu','Nauki przyrodnicze','Nauki rolnicze','Nauki scisle','Nauki spoleczne','Sztuki piękne','Inne'))
+```
+
+```{r}
 summary(df0)
+str(df0)
 ```
 ```{r}
 data2<-df0%>%
@@ -84,13 +92,12 @@ g3
 
 
 ```{r}
-levels(df0$Wielkosc_miasta)<-c('poniżej 5 tysięcy','5 - 20 tysięcy', '20 - 100 tysięcy', '100 - 200 tysięcy', '200 - 500 tysięcy', 'powyżej 500 tysięcy')
 data2<-df0%>%
   dplyr::group_by(Wielkosc_miasta)%>%
   dplyr::count()
 g4<-ggplot(data2, aes(x=data2$Wielkosc_miasta,y=data2$n,fill=data2$Wielkosc_miasta))+geom_bar(stat='identity')+ theme(legend.position = "none")+
   geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
-  xlab('')+ylab('')+ ggtitle('Wielkość miasta:')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "D")+ylim(0,155)
+  xlab('')+ylab('')+ ggtitle('Wielkość miasta:')+theme(plot.title = element_text(hjust = 0.5))+ylim(0,155)
 g4
 ```
 
@@ -111,21 +118,191 @@ data2<-df0%>%
   dplyr::count()
 g6<-ggplot(data2, aes(x=data2$Wiecej_kierunkow,y=data2$n,fill=data2$Wiecej_kierunkow))+geom_bar(stat='identity')+ theme(legend.position = "none")+
   geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
-  xlab('')+ylab('')+ ggtitle('Studiowanie więcej niż 1 kierunku:')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "D")+scale_x_discrete(limits=c(0,1))
+  xlab('')+ylab('')+ ggtitle('Studiowanie więcej niż 1 kierunku')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "D")+scale_x_discrete(limits=c(0,1))
 g6
 ```
 
 ```{r}
-levels(df0$Rok)<-c('Ukończyłem/ukończyłam studia','V','IV','III','II','I')
 data2<-df0%>%
   dplyr::group_by(Rok)%>%
   dplyr::count()
-g6<-ggplot(data2, aes(x=data2$Rok,y=data2$n,fill=data2$Rok))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+g7<-ggplot(data2, aes(x=data2$Rok,y=data2$n,fill=data2$Rok))+geom_bar(stat='identity')+ theme(legend.position = "none")+
   geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
-  xlab('')+ylab('')+ ggtitle('Rok studiów')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")+coord_flip()
-g6
-levels(df0$Rok)<-c('I','II','III','IV','V','Ukończyłem/ukończyłam studia')
+  xlab('')+ylab('')+ ggtitle('Rok studiów')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")+scale_x_discrete(labels=c('I','II','III','IV','V','Ukończyłem/ukończyłam\nstudia'))
+g7
 ```
+
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Prywatna)%>%
+  dplyr::count()
+g8<-ggplot(data2, aes(x=data2$Prywatna,y=data2$n,fill=data2$Prywatna))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Uczelnia prywatna')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "D")+scale_x_discrete(limits=c(0,1))
+g8
+```
+
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Zaocznie)%>%
+  dplyr::count()
+g9<-ggplot(data2, aes(x=data2$Zaocznie,y=data2$n,fill=data2$Zaocznie))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Studia zaoczne')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "D")+scale_x_discrete(limits=c(0,1))
+g9
+```
+
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Typ)%>%
+  dplyr::count()
+g10<-ggplot(data2, aes(x=data2$Typ,y=data2$n,fill=data2$Typ))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Typ uczelni')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")
+g10
+```
+
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Kola)%>%
+  dplyr::count()
+g11<-ggplot(data2, aes(x=data2$Kola,y=data2$n,fill=data2$Kola))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Koła naukowe')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")+scale_x_discrete(limits=c(0,1))
+g11
+```
+
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Organizacje)%>%
+  dplyr::count()
+g12<-ggplot(data2, aes(x=data2$Organizacje,y=data2$n,fill=data2$Organizacje))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Organizacje studenckie')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")+scale_x_discrete(limits=c(0,1))
+g12
+```
+
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Samorzad)%>%
+  dplyr::count()
+g13<-ggplot(data2, aes(x=data2$Samorzad,y=data2$n,fill=data2$Samorzad))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Samorząd studencki')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")+scale_x_discrete(limits=c(0,1))
+g13
+```
+
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Srednia)%>%
+  dplyr::count()
+g14<-ggplot(data2, aes(x=data2$Srednia,y=data2$n,fill=data2$Srednia))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Średnia z całych studiów')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")
+g14
+```
+
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Stypendium)%>%
+  dplyr::count()
+g15<-ggplot(data2, aes(x=data2$Stypendium,y=data2$n,fill=data2$Stypendium))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Uzyskanie stypendium naukowego w ciągu studiów')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")+scale_x_discrete(limits=c(0,1))
+g15
+```
+
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Wiodace)%>%
+  dplyr::count()
+g16<-ggplot(data2, aes(x=data2$Wiodace,y=data2$n,fill=data2$Wiodace))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Ocena jakości przedmiotów wiodących')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")
+g16
+```
+
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Zapychacze)%>%
+  dplyr::count()
+g17<-ggplot(data2, aes(x=data2$Zapychacze,y=data2$n,fill=data2$Zapychacze))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Ocena jakości przedmiotów niepowiązanych z kierunkiem')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")
+g17
+```
+
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Zapychacze_dobor)%>%
+  dplyr::count()
+g18<-ggplot(data2, aes(x=data2$Zapychacze_dobor,y=data2$n,fill=data2$Zapychacze_dobor))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Ocena doboru przedmiotów niezwiązanych z kierunkiem')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")
+g18
+```
+
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Jezyk)%>%
+  dplyr::count()
+g19<-ggplot(data2, aes(x=data2$Jezyk,y=data2$n,fill=data2$Jezyk))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Ocena jakości nauczania języków obcego')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")
+g19
+```
+
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Organizacja_uczelni)%>%
+  dplyr::count()
+g20<-ggplot(data2, aes(x=data2$Organizacja_uczelni,y=data2$n,fill=data2$Organizacja_uczelni))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Ocena organizacji na uczelni')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")
+g20
+```
+
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Plany)%>%
+  dplyr::count()
+g21<-ggplot(data2, aes(x=data2$Plany,y=data2$n,fill=data2$Plany))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Ocena planów zajęć')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")
+g21
+```
+
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Trudnosc)%>%
+  dplyr::count()
+g22<-ggplot(data2, aes(x=data2$Trudnosc,y=data2$n,fill=data2$Trudnosc))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Ocena trudności studiów')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")
+g22
+```
+
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Przydatnosc)%>%
+  dplyr::count()
+g23<-ggplot(data2, aes(x=data2$Przydatnosc,y=data2$n,fill=data2$Przydatnosc))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Ocena przydatności studiów')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")
+g23
+```
+
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Ogolna_ocena)%>%
+  dplyr::count()
+g24<-ggplot(data2, aes(x=data2$Ogolna_ocena,y=data2$n,fill=data2$Ogolna_ocena))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Ogólna ocena studiów')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")
+g24
+```
+
+
 
 
 
