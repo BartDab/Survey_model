@@ -13,7 +13,10 @@ require(tm)
 require(randomForest)
 require(Metrics)
 require(viridis)
-require(gridExtra)
+require(ggpubr)
+require(rstatix)
+require(tibble)
+require(ggplot2)
 ```
 
 Import przygotowanych danych i delikatne zmiany.
@@ -59,8 +62,8 @@ str(df0)
 ```
 ```{r}
 data2<-df0%>%
-  dplyr::group_by(Kobieta)%>%
-  dplyr::count()
+  group_by(Kobieta)%>%
+  count()
 g1<-ggplot(data2, aes(x=data2$Kobieta,y=data2$n,fill=data2$Kobieta))+geom_bar(stat='identity')+ theme(legend.position = "none")+
    geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
   xlab('')+
@@ -69,20 +72,20 @@ g1
 ```
 
 ```{r}
-data2<-df0%>%
+data3<-df0%>%
   dplyr::group_by(Wiek)%>%
   dplyr::count()
-g2<-ggplot(data2, aes(x=as.factor(data2$Wiek),y=data2$n,fill=as.factor(data2$Wiek)))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+g2<-ggplot(data3, aes(x=as.factor(data3$Wiek),y=data3$n,fill=as.factor(data3$Wiek)))+geom_bar(stat='identity')+ theme(legend.position = "none")+
   theme(axis.text.x = element_text(angle = 70, hjust = 1))+ geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
   xlab('')+ylab('')+ ggtitle('Wiek:')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "D")+ylim(0,105)
 g2
 ```
 
 ```{r}
-data2<-df0%>%
+data4<-df0%>%
   dplyr::group_by(Wojewodztwo_pochodzenia)%>%
   dplyr::count()
-g3<-ggplot(data2, aes(x=data2$Wojewodztwo_pochodzenia,y=data2$n,fill=data2$Wojewodztwo_pochodzenia))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+g3<-ggplot(data4, aes(x=data4$Wojewodztwo_pochodzenia,y=data4$n,fill=data4$Wojewodztwo_pochodzenia))+geom_bar(stat='identity')+ theme(legend.position = "none")+
    geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
   xlab('')+
   ylab('')+scale_color_viridis(option = "C")+ ggtitle('Województwo pochodzenia:')+theme(plot.title = element_text(hjust = 0.5))+
@@ -92,13 +95,19 @@ g3
 
 
 ```{r}
-data2<-df0%>%
+data5<-df0%>%
   dplyr::group_by(Wielkosc_miasta)%>%
   dplyr::count()
-g4<-ggplot(data2, aes(x=data2$Wielkosc_miasta,y=data2$n,fill=data2$Wielkosc_miasta))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+g4<-ggplot(data5, aes(x=data5$Wielkosc_miasta,y=data5$n,fill=data5$Wielkosc_miasta))+geom_bar(stat='identity')+ theme(legend.position = "none")+
   geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
   xlab('')+ylab('')+ ggtitle('Wielkość miasta:')+theme(plot.title = element_text(hjust = 0.5))+ylim(0,155)
 g4
+```
+
+```{r}
+figure <- ggpubr::ggarrange(g2,g3,
+                    ncol = 2, nrow=1)
+figure
 ```
 
 ```{r}
@@ -302,8 +311,83 @@ g24<-ggplot(data2, aes(x=data2$Ogolna_ocena,y=data2$n,fill=data2$Ogolna_ocena))+
 g24
 ```
 
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Praca)%>%
+  dplyr::count()
+g25<-ggplot(data2, aes(x=data2$Praca,y=data2$n,fill=data2$Praca))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Praca w branży')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")+scale_x_discrete(labels=c('0 (Nie)','1 (Tak)'))
+g25
+```
 
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Akademik)%>%
+  dplyr::count()
+g26<-ggplot(data2, aes(x=data2$Akademik,y=data2$n,fill=data2$Akademik))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Mieszkanie w akademiku')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")+scale_x_discrete(limits=c(0,1))
+g26
+```
 
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Dom_mieszkanie_rodzinne)%>%
+  dplyr::count()
+g27<-ggplot(data2, aes(x=data2$Dom_mieszkanie_rodzinne,y=data2$n,fill=data2$Dom_mieszkanie_rodzinne))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Mieszkanie w domu bądź mieszkaniu własnym')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")+scale_x_discrete(limits=c(0,1))
+g27
+```
+
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Wynajete_mieszkanie)%>%
+  dplyr::count()
+g28<-ggplot(data2, aes(x=data2$Wynajete_mieszkanie,y=data2$n,fill=data2$Wynajete_mieszkanie))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Mieszkanie w mieszkaniu wynajętym')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")+scale_x_discrete(limits=c(0,1))
+g28
+```
+
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Wynajety_pokoj)%>%
+  dplyr::count()
+g29<-ggplot(data2, aes(x=data2$Wynajety_pokoj,y=data2$n,fill=data2$Wynajety_pokoj))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Mieszkanie w domu bądź mieszkaniu własnym')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")+scale_x_discrete(limits=c(0,1))
+g29
+```
+
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Inne)%>%
+  dplyr::count()
+g30<-ggplot(data2, aes(x=data2$Inne,y=data2$n,fill=data2$Inne))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Mieszkanie w opcji niewymienionej w ankiecie')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")+scale_x_discrete(limits=c(0,1))
+g30
+```
+
+```{r}
+data2<-df0%>%
+  dplyr::group_by(Dyscyplina)%>%
+  dplyr::count()
+g31<-ggplot(data2, aes(x=data2$Dyscyplina,y=data2$n,fill=data2$Dyscyplina))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+  geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
+  xlab('')+ylab('')+ ggtitle('Dyscyplina studiów')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")+
+  theme(axis.text.x = element_text(angle = 70, hjust = 1))
+g31
+```
+
+```{r}
+par(mfrow=c(2,2))
+g31
+g26
+
+```
 
 
 
