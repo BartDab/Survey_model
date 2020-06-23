@@ -10,7 +10,7 @@ output: html_document
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 require(tidyverse)
-require(viridis)
+require(viridisLite)
 require(ggpubr)
 #require(rstatix)
 #require(tibble)
@@ -47,25 +47,27 @@ df<-df0
 
 # Eksploracyjna analiza danych
 
-```{r}
+```{r echo=FALSE}
 df0$Wielkosc_miasta<-factor(df0$Wielkosc_miasta,level=c("poniżej 5 tysięcy","5 - 20 tysięcy","20 - 100 tysięcy", "100 - 200 tysięcy","200 - 500 tysięcy","powyżej 500 tysięcy"))
 df0$Rok<-factor(df0$Rok,level=c('I','II','III','IV','V','Ukończyłem/ukończyłam studia'))
 df0$Typ<-factor(df0$Typ,level=c("Artystyczna","Ekonomiczna","Pedagogiczna","Techniczna","Uniwersytet","Inna"))
 df0$Dyscyplina<-factor(df0$Dyscyplina,level=c('Nauki humanistyczne','Nauki inzynieryjno-techniczne','Nauki o zdrowiu','Nauki przyrodnicze','Nauki rolnicze','Nauki scisle','Nauki spoleczne','Sztuki piękne','Inne'))
 ```
 
-```{r}
+```{r echo=FALSE}
 summary(df0)
 str(df0)
 ```
+
+
 ```{r}
 data1<-df0%>%
   group_by(Kobieta)%>%
   count()
-g1<-ggplot(data1, aes(x=data1$Kobieta,y=data1$n,fill=data1$Kobieta))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+g1<-ggplot(data1, aes(x=data1$Kobieta,y=data1$n,fill=c('pink','blue')))+geom_bar(stat='identity')+ theme(legend.position = "none")+
    geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
   xlab('')+
-  ylab('')+scale_color_viridis(option = "C")+scale_x_discrete(limits=c(0,1))+ ggtitle('Płeć:')+theme(plot.title = element_text(hjust = 0.5))
+  ylab('')+scale_x_discrete(limits=c(0,1),labels=c('Mężczyzna','Kobieta'))+ ggtitle('Płeć:')+theme(plot.title = element_text(hjust = 0.5))+ylim(0,270)
 g1
 ```
 
@@ -98,7 +100,8 @@ data4<-df0%>%
   dplyr::count()
 g4<-ggplot(data4, aes(x=data4$Wielkosc_miasta,y=data4$n,fill=data4$Wielkosc_miasta))+geom_bar(stat='identity')+ theme(legend.position = "none")+
   geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
-  xlab('')+ylab('')+ ggtitle('Wielkość miasta:')+theme(plot.title = element_text(hjust = 0.5))+ylim(0,155)
+  xlab('')+ylab('')+ ggtitle('Wielkość miasta:')+theme(plot.title = element_text(hjust = 0.5))+ylim(0,155)+
+  theme(axis.text.x = element_text(angle = 55, hjust = 1))
 g4
 ```
 
@@ -120,12 +123,12 @@ g5
 ```
 
 ```{r}
-data2<-df0%>%
+data1<-df0%>%
   dplyr::group_by(Wiecej_kierunkow)%>%
   dplyr::count()
-g6<-ggplot(data2, aes(x=data2$Wiecej_kierunkow,y=data2$n,fill=data2$Wiecej_kierunkow))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+g6<-ggplot(data1, aes(x=data1$Wiecej_kierunkow,y=data1$n,fill=data1$Wiecej_kierunkow))+geom_bar(stat='identity')+ theme(legend.position = "none")+
   geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
-  xlab('')+ylab('')+ ggtitle('Studiowanie więcej niż 1 kierunku')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "D")+scale_x_discrete(limits=c(0,1))
+  xlab('')+ylab('')+ ggtitle('Studiowanie więcej niż 1 kierunku')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "D")+scale_x_discrete(limits=c(0,1))+ylim(c(0,420))
 g6
 ```
 
@@ -135,7 +138,7 @@ data2<-df0%>%
   dplyr::count()
 g7<-ggplot(data2, aes(x=data2$Rok,y=data2$n,fill=data2$Rok))+geom_bar(stat='identity')+ theme(legend.position = "none")+
   geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
-  xlab('')+ylab('')+ ggtitle('Rok studiów')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")+scale_x_discrete(labels=c('I','II','III','IV','V','Ukończyłem/ukończyłam\nstudia'))
+  xlab('')+ylab('')+ ggtitle('Rok studiów')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")+scale_x_discrete(labels=c('I','II','III','IV','V','Ukończyłem/\nukończyłam\nstudia'))+ylim(0,140)
 g7
 ```
 
@@ -145,37 +148,50 @@ data2<-df0%>%
   dplyr::count()
 g8<-ggplot(data2, aes(x=data2$Prywatna,y=data2$n,fill=data2$Prywatna))+geom_bar(stat='identity')+ theme(legend.position = "none")+
   geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
-  xlab('')+ylab('')+ ggtitle('Uczelnia prywatna')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "D")+scale_x_discrete(limits=c(0,1))
+  xlab('')+ylab('')+ ggtitle('Uczelnia prywatna')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "D")+scale_x_discrete(limits=c(0,1))+ylim(c(0,420))
 g8
 ```
 
 ```{r}
-data2<-df0%>%
+data3<-df0%>%
   dplyr::group_by(Zaocznie)%>%
   dplyr::count()
-g9<-ggplot(data2, aes(x=data2$Zaocznie,y=data2$n,fill=data2$Zaocznie))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+g9<-ggplot(data3, aes(x=data3$Zaocznie,y=data3$n,fill=data3$Zaocznie))+geom_bar(stat='identity')+ theme(legend.position = "none")+
   geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
-  xlab('')+ylab('')+ ggtitle('Studia zaoczne')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "D")+scale_x_discrete(limits=c(0,1))
+  xlab('')+ylab('')+ ggtitle('Studia zaoczne')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "D")+scale_x_discrete(limits=c(0,1))+ylim(c(0,420))
 g9
 ```
 
 ```{r}
-data2<-df0%>%
+figure <- ggpubr::ggarrange(g6,g8, g9,
+                    ncol = 2, nrow=2)#, widths=c(c(1,0.7)))
+figure
+```
+
+```{r}
+data3<-df0%>%
   dplyr::group_by(Typ)%>%
   dplyr::count()
-g10<-ggplot(data2, aes(x=data2$Typ,y=data2$n,fill=data2$Typ))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+g10<-ggplot(data3, aes(x=data3$Typ,y=data3$n,fill=data3$Typ))+geom_bar(stat='identity')+ theme(legend.position = "none")+
   geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
-  xlab('')+ylab('')+ ggtitle('Typ uczelni')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")
+  xlab('')+ylab('')+ ggtitle('Typ uczelni')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")+ylim(0,220)+
+  theme(axis.text.x = element_text(angle = 55, hjust = 1))
 g10
 ```
 
 ```{r}
-data2<-df0%>%
+figure <- ggpubr::ggarrange(g1,g7,g4,g10,
+                    ncol = 2, nrow=1)
+figure
+```
+
+```{r}
+data1<-df0%>%
   dplyr::group_by(Kola)%>%
   dplyr::count()
-g11<-ggplot(data2, aes(x=data2$Kola,y=data2$n,fill=data2$Kola))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+g11<-ggplot(data1, aes(x=data1$Kola,y=data1$n,fill=data1$Kola))+geom_bar(stat='identity')+ theme(legend.position = "none")+
   geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
-  xlab('')+ylab('')+ ggtitle('Koła naukowe')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")+scale_x_discrete(limits=c(0,1))
+  xlab('')+ylab('')+ ggtitle('Koła naukowe')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")+scale_x_discrete(limits=c(0,1))+ylim(0,390)
 g11
 ```
 
@@ -185,25 +201,31 @@ data2<-df0%>%
   dplyr::count()
 g12<-ggplot(data2, aes(x=data2$Organizacje,y=data2$n,fill=data2$Organizacje))+geom_bar(stat='identity')+ theme(legend.position = "none")+
   geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
-  xlab('')+ylab('')+ ggtitle('Organizacje studenckie')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")+scale_x_discrete(limits=c(0,1))
+  xlab('')+ylab('')+ ggtitle('Organizacje studenckie')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")+scale_x_discrete(limits=c(0,1))+ylim(0,390)
 g12
 ```
 
 ```{r}
-data2<-df0%>%
+data3<-df0%>%
   dplyr::group_by(Samorzad)%>%
   dplyr::count()
-g13<-ggplot(data2, aes(x=data2$Samorzad,y=data2$n,fill=data2$Samorzad))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+g13<-ggplot(data3, aes(x=data3$Samorzad,y=data3$n,fill=data3$Samorzad))+geom_bar(stat='identity')+ theme(legend.position = "none")+
   geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
-  xlab('')+ylab('')+ ggtitle('Samorząd studencki')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")+scale_x_discrete(limits=c(0,1))
+  xlab('')+ylab('')+ ggtitle('Samorząd studencki')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")+scale_x_discrete(limits=c(0,1))+ylim(0,390)
 g13
 ```
 
 ```{r}
-data2<-df0%>%
+figure <- ggpubr::ggarrange(g11,g12, g13,
+                    ncol = 2, nrow=2)#, widths=c(c(1,0.7)))
+figure
+```
+
+```{r}
+data1<-df0%>%
   dplyr::group_by(Srednia)%>%
   dplyr::count()
-g14<-ggplot(data2, aes(x=data2$Srednia,y=data2$n,fill=data2$Srednia))+geom_bar(stat='identity')+ theme(legend.position = "none")+
+g14<-ggplot(data1, aes(x=data1$Srednia,y=data1$n,fill=data1$Srednia))+geom_bar(stat='identity')+ theme(legend.position = "none")+
   geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
   xlab('')+ylab('')+ ggtitle('Średnia z całych studiów')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")
 g14
@@ -215,8 +237,14 @@ data2<-df0%>%
   dplyr::count()
 g15<-ggplot(data2, aes(x=data2$Stypendium,y=data2$n,fill=data2$Stypendium))+geom_bar(stat='identity')+ theme(legend.position = "none")+
   geom_text(aes(label = n), position =position_dodge(width=0.9), vjust=-0.25)+
-  xlab('')+ylab('')+ ggtitle('Uzyskanie stypendium naukowego w ciągu studiów')+theme(plot.title = element_text(hjust = 0.5))+scale_color_viridis(option = "B")+scale_x_discrete(limits=c(0,1))
+  xlab('')+ylab('')+ ggtitle('Uzyskanie stypendium naukowego w ciągu studiów')+theme(plot.title = element_text(hjust = 0.5,size=10))+scale_color_viridis(option = "B")+scale_x_discrete(limits=c(0,1))
 g15
+```
+
+```{r}
+figure <- ggpubr::ggarrange(g14,g15,
+                    ncol = 2, nrow=1)#, widths=c(c(1,0.7)))
+figure
 ```
 
 ```{r}

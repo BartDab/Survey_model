@@ -12,11 +12,6 @@ require(stringr)
 require(tm)
 require(randomForest)
 require(Metrics)
-require(viridis)
-require(ggpubr)
-#require(rstatix)
-#require(tibble)
-#require(ggplot2)
 ```
 
 Import przygotowanych danych i delikatne zmiany.
